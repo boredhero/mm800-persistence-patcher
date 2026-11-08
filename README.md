@@ -45,9 +45,31 @@ Do not run the normal build as root. The normal application update mechanism
 is preferred; use full ISP only when necessary with a verified recovery image
 and explicit approval.
 
-## Build locally
+## Easiest path: guided backup, build, and flash
 
-Run from the directory containing your stock application:
+The normal application-only updater was not reliable during testing, so the
+supported workflow is full ISP with a verified backup and readback. The wizard
+handles it for you:
+
+```sh
+python3 mm800-persistence-patcher/tools/mm800_patch_and_flash.py
+```
+
+It will:
+
+1. Ask you to unplug and hold the pinhole while reconnecting.
+2. Mount the recovery drive read-only and make two matching backups.
+3. Verify stock 1.02.50 and build the full image locally.
+4. Show the image hash and ask you to type `FLASH` before any write.
+5. Require exact readback and then check the embedded build record.
+
+The output directory defaults to `mm800-work` in the current directory and
+must be new. Backups and generated images stay out of the repository. See
+`docs/QUICKSTART.md` for a beginner-friendly walkthrough.
+
+## Advanced: manual build
+
+From the directory containing your stock application:
 
 ```sh
 python3 ../mm800-persistence-patcher/tools/build_candidate.py
@@ -55,23 +77,10 @@ python3 ../mm800-persistence-patcher/tools/verify_image.py \
   ../mm800-persistence-patcher/tools/build/SageApp_v1.02.50-eeprom-persistence.bin --compare-stock
 ```
 
-The builder requires the exact stock hash and refuses to overwrite it. Output
-goes to `tools/build/` inside the project. Do not commit or upload the result.
+For a full ISP image, place `mm800-full-backup-01.bin` in that directory and
+run `python3 ../mm800-persistence-patcher/tools/build_full_image.py`.
 
-For a full ISP image, place `mm800-full-backup-01.bin` in the working
-directory, then run:
-
-```sh
-python3 ../mm800-persistence-patcher/tools/build_full_image.py
-```
-
-This writes a full image containing your original bootloader. It is not the
-default update path.
-
-## Flash with readback verification
-
-Use the normal application updater when practical. For a full ISP write, use a
-fresh pinhole session and explicitly approve it:
+For a manual full ISP write, use a fresh pinhole session and explicit approval:
 
 ```sh
 MM800_ISP_WRITE=YES ../mm800-persistence-patcher/tools/isp_write_verified.sh \

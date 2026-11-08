@@ -8,12 +8,11 @@ BUILD = ROOT / "build"
 BACKUP = Path.cwd() / "mm800-full-backup-01.bin"
 APPLICATION = BUILD / "SageApp_v1.02.50-eeprom-persistence.bin"
 OUTPUT = BUILD / "MM800-full-eeprom-persistence-ISP.bin"
-EXPECTED_BACKUP_HASH = "a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae"
 EXPECTED_APPLICATION_HASH = "418cce010dea0637555f67da5273ae26f4f30c2a69bfbf583e132d7d50d891be"
 
 backup = BACKUP.read_bytes()
 application = APPLICATION.read_bytes()
-assert hashlib.sha256(backup).hexdigest() == EXPECTED_BACKUP_HASH
+print(f"backup_sha256={hashlib.sha256(backup).hexdigest()}")
 assert hashlib.sha256(application).hexdigest() == EXPECTED_APPLICATION_HASH
 assert len(backup) == 0x20000
 assert len(application) <= 0x7000

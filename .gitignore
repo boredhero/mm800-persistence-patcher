@@ -10,6 +10,7 @@
 
 # Native build output.
 build/
+mm800-work/
 *.o
 *.elf
 *.axf
