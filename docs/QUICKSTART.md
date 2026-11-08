@@ -9,6 +9,23 @@ You need Python 3, Clang/lld with Cortex-M0 support, `llvm-objcopy`, and Linux
 `udisksctl`, `lsblk`, and `findmnt`. All Python code uses the standard library;
 no virtual environment is required. See `dependencies.md` for install commands.
 
+### Ubuntu or Debian
+
+```sh
+sudo apt update
+sudo apt install clang lld llvm python3 udisks2 util-linux
+```
+
+### Arch Linux or Manjaro
+
+```sh
+sudo pacman -S clang lld llvm python udisks2 util-linux
+```
+
+These packages provide Python 3, Clang/lld, `llvm-objcopy`, `udisksctl`,
+`lsblk`, and `findmnt`. You can also run
+`python3 tools/check_dependencies.py` to check what is missing.
+
 You also need the MM800 and its underside pinhole button.
 
 ## 2. Run the wizard
