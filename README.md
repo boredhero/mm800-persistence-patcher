@@ -1,0 +1,120 @@
+# MM800 persistence patcher
+
+**Unofficial experimental firmware modification. Use at your own risk.**
+This project can modify firmware and, after separate approval, write a
+profile to EEPROM. Incorrect use could require low-level recovery. No warranty
+or guarantee of recovery is provided. This project is not affiliated with or
+supported by Corsair.
+
+An MIT-licensed, source-only, local patcher for the Corsair MM800 RGB Polaris.
+It adds saved static per-zone RGB while preserving the stock brightness knob
+and the manufacturer's 75% renderer cap.
+
+## Supported device and firmware
+
+- USB: `1b1c:1b3b`
+- Application: `SageApp_v1.02.50.bin`
+- Length: 8,592 bytes
+- SHA-256: `5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa`
+
+All other versions are rejected. No firmware is included in this repository.
+You must supply a full backup from your own MM800 and extract the stock
+application locally. See `SAFETY.md`.
+
+## Features
+
+- Restore one static 15-zone RGB profile after power loss.
+- Independent color per zone; multicolor profiles are supported.
+- Alternating A/B records for interrupted-save recovery.
+- Fail closed if either EEPROM slot cannot be read.
+- Read-only EEPROM diagnostic backup.
+- Stock live and persistent brightness levels remain separate from RGB.
+- Embedded build identity and structural verification.
+
+Static RGB only: animation metadata is not currently saved. The renderer's
+750/1000 cap is preserved.
+
+## Requirements
+
+- Python 3
+- Clang/lld with Cortex-M0 support and `llvm-objcopy`
+- Linux `udisksctl`, `lsblk`, and `findmnt` for the ISP workflow
+- A user-supplied full backup from the exact supported MM800
+
+Do not run the normal build as root. The normal application update mechanism
+is preferred; use full ISP only when necessary with a verified recovery image
+and explicit approval.
+
+## Build locally
+
+Run from the directory containing your stock application:
+
+```sh
+python3 /path/to/mm800-persistence-patcher/tools/build_candidate.py
+python3 /path/to/mm800-persistence-patcher/tools/verify_image.py \
+  build/SageApp_v1.02.50-eeprom-persistence.bin --compare-stock
+```
+
+The builder requires the exact stock hash and refuses to overwrite it. Output
+goes to `tools/build/` inside the project. Do not commit or upload the result.
+
+For a full ISP image, place `mm800-full-backup-01.bin` in the working
+directory, then run:
+
+```sh
+python3 /path/to/mm800-persistence-patcher/tools/build_full_image.py
+```
+
+This writes a full image containing your original bootloader. It is not the
+default update path.
+
+## Flash with readback verification
+
+Use the normal application updater when practical. For a full ISP write, use a
+fresh pinhole session and explicitly approve it:
+
+```sh
+MM800_ISP_WRITE=YES /path/to/mm800-persistence-patcher/tools/isp_write_verified.sh \
+  /dev/sdX /path/to/MM800-full-eeprom-persistence-ISP.bin <expected-sha256>
+```
+
+The script checks device identity, image size/hash, and the ROM-created file;
+performs the in-place write; and requires an exact readback match. It never
+deletes or truncates `firmware.bin`. Do not reboot after a mismatch—restore the
+original backup with the same procedure.
+
+## Profile control
+
+The host tool auto-locates and caches the MM800 control interface:
+
+```sh
+python3 tools/mm800_candidate_tool.py get-current
+python3 tools/mm800_candidate_tool.py set-rgb 00ff00
+python3 tools/mm800_candidate_tool.py save --approve-eeprom-write
+python3 tools/mm800_candidate_tool.py get-saved
+```
+
+Before the first save, back up EEPROM:
+
+```sh
+python3 tools/mm800_candidate_tool.py dump-eeprom /path/outside/repo/eeprom-before.bin
+```
+
+Other diagnostics:
+
+```sh
+python3 tools/mm800_candidate_tool.py iap-debug
+python3 tools/mm800_candidate_tool.py chip-info
+```
+
+An explicit `/dev/hidrawN` can replace auto discovery. The locator validates
+cached identity and invalidates it after repeated communication failures.
+
+## Verification and support
+
+Read `docs/verification.md`, `docs/backup-and-recovery.md`, and
+`docs/hardware-test-results.md` before treating any image as tested. Report
+issues without attaching firmware or device backups; see `SECURITY.md`.
+
+The MIT license covers only original project contributions, not Corsair
+firmware or locally generated images containing it. See `NOTICE.md`.

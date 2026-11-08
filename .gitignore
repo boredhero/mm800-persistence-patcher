@@ -1,0 +1,31 @@
+# Firmware and device artifacts — never commit these.
+*.bin
+*.zip
+*.img
+*.hex
+*.eep
+*.eeprom
+*.dump
+*.bak
+
+# Native build output.
+build/
+*.o
+*.elf
+*.axf
+*.map
+
+# Reverse-engineering databases and private device data.
+analysis/
+ghidra*/
+*.gpr
+*.rep/
+
+# Local logs and manifests that may name private device paths.
+*.log
+local-manifest.json
+
+# Python caches and local test output.
+__pycache__/
+*.pyc
+.pytest_cache/
