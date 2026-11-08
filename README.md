@@ -50,9 +50,9 @@ and explicit approval.
 Run from the directory containing your stock application:
 
 ```sh
-python3 /path/to/mm800-persistence-patcher/tools/build_candidate.py
-python3 /path/to/mm800-persistence-patcher/tools/verify_image.py \
-  build/SageApp_v1.02.50-eeprom-persistence.bin --compare-stock
+python3 ../mm800-persistence-patcher/tools/build_candidate.py
+python3 ../mm800-persistence-patcher/tools/verify_image.py \
+  ../mm800-persistence-patcher/tools/build/SageApp_v1.02.50-eeprom-persistence.bin --compare-stock
 ```
 
 The builder requires the exact stock hash and refuses to overwrite it. Output
@@ -62,7 +62,7 @@ For a full ISP image, place `mm800-full-backup-01.bin` in the working
 directory, then run:
 
 ```sh
-python3 /path/to/mm800-persistence-patcher/tools/build_full_image.py
+python3 ../mm800-persistence-patcher/tools/build_full_image.py
 ```
 
 This writes a full image containing your original bootloader. It is not the
@@ -74,8 +74,8 @@ Use the normal application updater when practical. For a full ISP write, use a
 fresh pinhole session and explicitly approve it:
 
 ```sh
-MM800_ISP_WRITE=YES /path/to/mm800-persistence-patcher/tools/isp_write_verified.sh \
-  /dev/sdX /path/to/MM800-full-eeprom-persistence-ISP.bin <expected-sha256>
+MM800_ISP_WRITE=YES ../mm800-persistence-patcher/tools/isp_write_verified.sh \
+  /dev/sdX ../mm800-persistence-patcher/tools/build/MM800-full-eeprom-persistence-ISP.bin <expected-sha256>
 ```
 
 The script checks device identity, image size/hash, and the ROM-created file;
@@ -97,7 +97,7 @@ python3 tools/mm800_candidate_tool.py get-saved
 Before the first save, back up EEPROM:
 
 ```sh
-python3 tools/mm800_candidate_tool.py dump-eeprom /path/outside/repo/eeprom-before.bin
+python3 tools/mm800_candidate_tool.py dump-eeprom ../eeprom-before.bin
 ```
 
 Other diagnostics:
