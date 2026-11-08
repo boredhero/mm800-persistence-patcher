@@ -12,7 +12,31 @@ and the manufacturer's 75% renderer cap.
 
 ## Quickstart
 
-Clone the project and run the guided backup/build/flash workflow:
+### 1. Install the programs this project needs
+
+These commands install Python, the compiler, and the USB drive tools used by
+the wizard.
+
+Ubuntu or Debian:
+
+```sh
+sudo apt update
+sudo apt install clang lld llvm python3 udisks2 util-linux
+```
+
+Arch Linux or Manjaro:
+
+```sh
+sudo pacman -S clang lld llvm python udisks2 util-linux
+```
+
+Check that everything is installed:
+
+```sh
+python3 tools/check_dependencies.py
+```
+
+### 2. Clone the project and run the guided backup/build/flash workflow:
 
 ```sh
 git clone https://github.com/boredhero/mm800-persistence-patcher.git
