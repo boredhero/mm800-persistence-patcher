@@ -17,7 +17,6 @@ Clone the project and run the guided backup/build/flash workflow:
 ```sh
 git clone https://github.com/boredhero/mm800-persistence-patcher.git
 cd mm800-persistence-patcher
-pipenv install  # optional; there are no third-party Python dependencies
 python3 tools/mm800_patch_and_flash.py --output-dir ../mm800-work
 ```
 
@@ -73,9 +72,8 @@ Static RGB only: animation metadata is not currently saved. The renderer's
 - Linux `udisksctl`, `lsblk`, and `findmnt` for the ISP workflow
 - A user-supplied full backup from the exact supported MM800
 
-Do not run the normal build as root. The normal application update mechanism
-is preferred; use full ISP only when necessary with a verified recovery image
-and explicit approval.
+The supported update path is full ISP with a verified backup and readback.
+The normal application-only updater was not reliable during testing.
 
 ## Easiest path: guided backup, build, and flash
 

@@ -6,9 +6,8 @@ works, and you do not need to delete or rename anything on the recovery drive.
 ## 1. Install the tools
 
 You need Python 3, Clang/lld with Cortex-M0 support, `llvm-objcopy`, and Linux
-`udisksctl`, `lsblk`, and `findmnt`. Pipenv is optional; the project has no
-third-party Python dependencies. If you use it, run `pipenv install` to create
-an empty environment.
+`udisksctl`, `lsblk`, and `findmnt`. All Python code uses the standard library;
+no virtual environment is required. See `dependencies.md` for install commands.
 
 You also need the MM800 and its underside pinhole button.
 
