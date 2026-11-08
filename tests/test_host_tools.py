@@ -8,27 +8,27 @@ from unittest import mock
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
 
-import build_candidate
+import build_patched_application
 import hidraw_locator as locator
-import mm800_candidate_tool
+import mm800_persistence_tool
 
 
 class BuilderTests(unittest.TestCase):
     def test_thumb_bl_known_encoding(self):
-        self.assertEqual(build_candidate.thumb_bl(0x3A8C, 0x4190), bytes.fromhex("00f080fb"))
+        self.assertEqual(build_patched_application.thumb_bl(0x3A8C, 0x4190), bytes.fromhex("00f080fb"))
 
     def test_thumb_b_known_encoding(self):
-        self.assertEqual(build_candidate.thumb_b(0x3200, 0x32FA), bytes.fromhex("7be0"))
+        self.assertEqual(build_patched_application.thumb_b(0x3200, 0x32FA), bytes.fromhex("7be0"))
 
     def test_parse_rgb_repeats_all_zones(self):
-        self.assertEqual(mm800_candidate_tool.parse_rgb("00ff00"), bytes.fromhex("00ff00") * 15)
+        self.assertEqual(mm800_persistence_tool.parse_rgb("00ff00"), bytes.fromhex("00ff00") * 15)
 
 
 class HidTests(unittest.TestCase):
     def test_query_accepts_padded_64_byte_response(self):
         packet = bytearray(64)
         packet[:2] = [0x0E, 0x22]
-        mm800 = mm800_candidate_tool.MM800.__new__(mm800_candidate_tool.MM800)
+        mm800 = mm800_persistence_tool.MM800.__new__(mm800_persistence_tool.MM800)
         mm800.fd = 1
         mm800.timeout = 0.01
         mm800.device = "/dev/hidraw-test"

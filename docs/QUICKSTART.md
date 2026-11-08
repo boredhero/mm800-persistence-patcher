@@ -54,9 +54,9 @@ directory with the same in-place recovery procedure. See
 From the repository directory:
 
 ```sh
-python3 tools/mm800_candidate_tool.py set-rgb 00ff00
-python3 tools/mm800_candidate_tool.py save --approve-eeprom-write
-python3 tools/mm800_candidate_tool.py get-saved
+python3 tools/mm800_persistence_tool.py set-rgb 00ff00
+python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
+python3 tools/mm800_persistence_tool.py get-saved
 ```
 
 `00ff00` is green. Try `0000ff` for blue or `ffffff` for white. Each zone can
@@ -65,12 +65,24 @@ also have a different color. The tool auto-locates the MM800 control interface.
 Before the first save, back up EEPROM:
 
 ```sh
-python3 tools/mm800_candidate_tool.py dump-eeprom ../eeprom-before.bin
+python3 tools/mm800_persistence_tool.py dump-eeprom ../eeprom-before.bin
 ```
 
 The save command writes the current profile and checks every RGB byte. Live
 brightness remains separate: levels 0–8 are live and levels 0–3 can be saved.
 The 75% renderer cap is preserved.
+
+## Restore the original firmware
+
+If the modified firmware causes trouble, restore the original stock backup:
+
+```sh
+python3 tools/mm800_restore.py --backup ../mm800-work/mm800-full-backup-01.bin
+```
+
+Enter pinhole mode again and type `RESTORE` when asked. The restore tool
+checks the backup, writes it in place, and verifies the readback. Do not use an
+app-only image for this.
 
 ## Important warnings
 

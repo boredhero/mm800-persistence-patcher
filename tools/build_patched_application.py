@@ -56,7 +56,7 @@ def main():
         "-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-Wall", "-Wextra", "-Werror",
     ]
     run(*common, "-c", str(SOURCE / "persistence.c"), "-o", str(BUILD / "persistence.o"))
-    run("clang", "--target=armv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-c", str(SOURCE / "hooks.s"), "-o", str(BUILD / "hooks.o"))
+    run("clang", "--target=armv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-c", str(SOURCE / "persistence_hooks.s"), "-o", str(BUILD / "hooks.o"))
     run(
         "ld.lld", "-T", str(SOURCE / "persistence.ld"), "--Map", str(BUILD / "persistence.map"),
         "-o", str(BUILD / "persistence.elf"), str(BUILD / "persistence.o"), str(BUILD / "hooks.o"),

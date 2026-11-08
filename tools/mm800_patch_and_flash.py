@@ -93,11 +93,13 @@ def main():
     print(f"Found recovery device: {device}")
 
     backup_hash = backup_device(workdir, device)
+    print(f"Full backup saved to {workdir / 'mm800-full-backup-01.bin'}")
+    print(f"Second copy saved to {workdir / 'mm800-full-backup-02.bin'}")
     print(f"Full backup SHA-256: {backup_hash}")
     extract_stock(workdir)
     print("Stock application 1.02.50 verified.")
 
-    run(["python3", str(ROOT / "tools" / "build_candidate.py")], cwd=workdir)
+    run(["python3", str(ROOT / "tools" / "build_patched_application.py")], cwd=workdir)
     run(["python3", str(ROOT / "tools" / "build_full_image.py")], cwd=workdir)
     full_image = ROOT / "tools" / "build" / "MM800-full-eeprom-persistence-ISP.bin"
     image_hash = hashlib.sha256(full_image.read_bytes()).hexdigest()
@@ -123,7 +125,7 @@ def main():
     ], env=environment)
     print("Readback verified. Unplug and reconnect the MM800 without the pinhole.")
     input("Press Enter after it has reconnected...")
-    run(["python3", str(ROOT / "tools" / "mm800_candidate_tool.py", "iap-debug")])
+    run(["python3", str(ROOT / "tools" / "mm800_persistence_tool.py", "iap-debug")])
     print(f"Build and backup files are in {workdir}")
 
 

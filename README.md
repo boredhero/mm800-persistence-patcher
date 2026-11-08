@@ -10,6 +10,38 @@ An MIT-licensed, source-only, local patcher for the Corsair MM800 RGB Polaris.
 It adds saved static per-zone RGB while preserving the stock brightness knob
 and the manufacturer's 75% renderer cap.
 
+## Quickstart
+
+Clone the project and run the guided backup/build/flash workflow:
+
+```sh
+git clone https://github.com/boredhero/mm800-persistence-patcher.git
+cd mm800-persistence-patcher
+pipenv install  # optional; there are no third-party Python dependencies
+python3 tools/mm800_patch_and_flash.py --output-dir ../mm800-work
+```
+
+The wizard will tell you when to unplug, hold the pinhole, and reconnect. It
+prints the exact backup paths before asking you to type `FLASH`. It then
+requires an exact readback match and checks the embedded build record.
+
+Restore the original stock backup if needed:
+
+```sh
+python3 tools/mm800_restore.py --backup ../mm800-work/mm800-full-backup-01.bin
+```
+
+Set and save green after the modified firmware is running:
+
+```sh
+python3 tools/mm800_persistence_tool.py set-rgb 00ff00
+python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
+python3 tools/mm800_persistence_tool.py get-saved
+```
+
+See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
+`docs/backup-and-recovery.md` for the recovery procedure.
+
 ## Supported device and firmware
 
 - USB: `1b1c:1b3b`
@@ -72,7 +104,7 @@ must be new. Backups and generated images stay out of the repository. See
 From the directory containing your stock application:
 
 ```sh
-python3 ../mm800-persistence-patcher/tools/build_candidate.py
+python3 ../mm800-persistence-patcher/tools/build_patched_application.py
 python3 ../mm800-persistence-patcher/tools/verify_image.py \
   ../mm800-persistence-patcher/tools/build/SageApp_v1.02.50-eeprom-persistence.bin --compare-stock
 ```
@@ -97,23 +129,23 @@ original backup with the same procedure.
 The host tool auto-locates and caches the MM800 control interface:
 
 ```sh
-python3 tools/mm800_candidate_tool.py get-current
-python3 tools/mm800_candidate_tool.py set-rgb 00ff00
-python3 tools/mm800_candidate_tool.py save --approve-eeprom-write
-python3 tools/mm800_candidate_tool.py get-saved
+python3 tools/mm800_persistence_tool.py get-current
+python3 tools/mm800_persistence_tool.py set-rgb 00ff00
+python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
+python3 tools/mm800_persistence_tool.py get-saved
 ```
 
 Before the first save, back up EEPROM:
 
 ```sh
-python3 tools/mm800_candidate_tool.py dump-eeprom ../eeprom-before.bin
+python3 tools/mm800_persistence_tool.py dump-eeprom ../eeprom-before.bin
 ```
 
 Other diagnostics:
 
 ```sh
-python3 tools/mm800_candidate_tool.py iap-debug
-python3 tools/mm800_candidate_tool.py chip-info
+python3 tools/mm800_persistence_tool.py iap-debug
+python3 tools/mm800_persistence_tool.py chip-info
 ```
 
 An explicit `/dev/hidrawN` can replace auto discovery. The locator validates
