@@ -272,12 +272,20 @@ and measured results.
 
 After installing the patched firmware once, install JSON animations without
 another firmware flash. The tool queries the actual device limits before writing
-and verifies the committed bank and generation:
+and verifies the committed bank and generation.
+
+Try the included four-zone fireflies example:
 
 ```sh
 python3 tools/mm800_custom_animation.py device-storage
-python3 tools/mm800_custom_animation.py install input.json --timing round
+python3 tools/mm800_custom_animation.py analyze examples/fireflies.json
+python3 tools/mm800_custom_animation.py install examples/fireflies.json
 ```
+
+This example loops across 14 zone tracks with up to four simultaneous lit zones.
+It intentionally has no physical-adjacency constraint. To install your own file,
+replace `examples/fireflies.json` with its path; add `--timing round` only if you
+explicitly want durations converted to the 34 ms timing grid.
 
 The payload budget is 1,728 bytes. Supported codecs are dictionary raw/palette,
 delta raw/palette, and brightness-envelope. Envelopes are limited to 153 total
