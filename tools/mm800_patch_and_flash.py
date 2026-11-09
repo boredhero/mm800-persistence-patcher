@@ -35,19 +35,13 @@ def find_recovery_device():
     raise RuntimeError("CRP DISABLD was not found. Unplug, hold the pinhole, reconnect, then try again.")
 
 
-def backup_device(workdir, device):
-    run(["udisksctl", "mount", "-o", "ro", "-b", device])
-    try:
-        source = Path(mountpoint(device)) / "firmware.bin"
-        if source.stat().st_size != FULL_SIZE:
-            raise RuntimeError(f"unexpected firmware.bin size: {source.stat().st_size}")
-        first = workdir / "mm800-full-backup-01.bin"
-        second = workdir / "mm800-full-backup-02.bin"
-        shutil.copyfile(source, first)
-        shutil.copyfile(source, second)
-    finally:
-        run(["udisksctl", "unmount", "-b", device])
-
+def preserve_backup(workdir, source):
+    if source.stat().st_size != FULL_SIZE:
+        raise RuntimeError(f"unexpected firmware backup size: {source.stat().st_size}")
+    first = workdir / "mm800-full-backup-01.bin"
+    second = workdir / "mm800-full-backup-02.bin"
+    shutil.copyfile(source, first)
+    shutil.copyfile(source, second)
     first_hash = hashlib.sha256(first.read_bytes()).hexdigest()
     second_hash = hashlib.sha256(second.read_bytes()).hexdigest()
     if first_hash != second_hash:
@@ -55,6 +49,16 @@ def backup_device(workdir, device):
     for path in (first, second):
         os.chmod(path, 0o444)
     return first_hash
+
+
+def backup_device(workdir, device):
+    run(["udisksctl", "mount", "-o", "ro", "-b", device])
+    try:
+        source = Path(mountpoint(device)) / "firmware.bin"
+        backup_hash = preserve_backup(workdir, source)
+    finally:
+        run(["udisksctl", "unmount", "-b", device])
+    return backup_hash
 
 
 def extract_stock(workdir):
@@ -79,6 +83,10 @@ def main():
         default="mm800-work",
         help="new directory for backups and generated images (must not already exist)",
     )
+    parser.add_argument(
+        "--stock-backup",
+        help="original full stock backup from the first run; use this for firmware updates",
+    )
     args = parser.parse_args()
     require_dependencies()
     workdir = Path(args.output_dir).resolve()
@@ -88,14 +96,19 @@ def main():
 
     print(
         "MM800 full-backup and patch wizard\n"
-        "This makes a full backup, checks it, builds the patched image, and asks\n"
-        "before writing. Nothing is downloaded from the internet.\n"
+        "This preserves a full stock backup, checks it, builds the patched image,\n"
+        "and asks before writing. Nothing is downloaded from the internet.\n"
     )
     input("Unplug the MM800, hold its underside pinhole, reconnect it, then press Enter when CRP DISABLD appears...")
     device = find_recovery_device()
     print(f"Found recovery device: {device}")
 
-    backup_hash = backup_device(workdir, device)
+    if args.stock_backup:
+        stock_backup = Path(args.stock_backup).resolve()
+        backup_hash = preserve_backup(workdir, stock_backup)
+        print(f"Using original stock backup: {stock_backup}")
+    else:
+        backup_hash = backup_device(workdir, device)
     print(f"Full backup saved to {workdir / 'mm800-full-backup-01.bin'}")
     print(f"Second copy saved to {workdir / 'mm800-full-backup-02.bin'}")
     print(f"Full backup SHA-256: {backup_hash}")

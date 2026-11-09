@@ -1,4 +1,4 @@
-# MM800 persistence patcher
+# MM800 Persistence Firmware Patcher + Control Scripts
 
 **Unofficial experimental firmware modification. Use at your own risk.**
 This project can modify firmware and, after separate approval, write a
@@ -6,9 +6,14 @@ profile to EEPROM. Incorrect use could require low-level recovery. No warranty
 or guarantee of recovery is provided. This project is not affiliated with or
 supported by Corsair.
 
-An MIT-licensed, source-only, local patcher for the Corsair MM800 RGB Polaris.
-It adds saved static per-zone RGB while preserving the stock brightness knob
-and the manufacturer's 75% renderer cap.
+An MIT-licensed, source-only, local patcher and control tool for the Corsair
+MM800 RGB Polaris. It adds saved static per-zone RGB while preserving the stock
+brightness knob and the manufacturer's 75% renderer cap.
+
+**You normally flash the firmware only once.** After that, the control script
+changes and saves colors and brightness without flashing. Reflash only when a
+project update changes the firmware itself, not for ordinary control-script or
+documentation updates.
 
 ## Quickstart
 
@@ -58,7 +63,8 @@ python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
 python3 tools/mm800_persistence_tool.py get-saved
 ```
 
-Set live brightness level 2, or make it persistent:
+Set live brightness level 2, or save level 2 for future boots without changing
+the current brightness:
 
 ```sh
 python3 tools/mm800_persistence_tool.py brightness 2
@@ -68,28 +74,35 @@ python3 tools/mm800_persistence_tool.py brightness 2 --save
 Live levels are 0–8; persistent levels are 0–3. These are integer driver
 levels, not percentages.
 
-Example multicolor profile with different colors in different zones:
+Set a multicolor profile by entering one six-digit RGB color for each of the 15
+zones, in order. This example sets live colors and then saves them:
 
 ```sh
-python3 - <<'PY'
-import sys
-sys.path.insert(0, "tools")
-from mm800_persistence_tool import MM800
-
-palette = [
-    "ff0000", "ff8000", "ffff00", "00ff00", "00ffff", "0000ff", "8000ff", "ffffff",
-    "ff0000", "ff8000", "ffff00", "00ff00", "00ffff", "0000ff", "8000ff",
-]
-rgb = b"".join(bytes.fromhex(color) for color in palette)
-with MM800("auto") as mm800:
-    mm800.set_rgb(rgb)
-    mm800.save_current()
-    print("multicolor profile saved")
-PY
+python3 tools/mm800_persistence_tool.py set-zones \
+  ff0000 ff8000 ffff00 00ff00 00ffff \
+  0000ff 8000ff ffffff ff0000 ff8000 \
+  ffff00 00ff00 00ffff 0000ff 8000ff
+python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
 ```
 
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 `docs/backup-and-recovery.md` for the recovery procedure.
+
+## Firmware updates
+
+The control tool automatically compares the installed firmware's embedded build
+ID with `version.yml` and warns when they differ. If an update is needed:
+
+```sh
+git fetch && git pull
+python3 tools/mm800_patch_and_flash.py \
+  --stock-backup ../mm800-work/mm800-full-backup-01.bin \
+  --output-dir ../mm800-update
+```
+
+Use your original full stock backup and a new output directory. The wizard
+verifies that backup, builds the updated full image, and asks before flashing.
+You do not need to restore stock first. Keep the original backup afterward.
 
 ## Supported device and backup
 

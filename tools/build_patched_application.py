@@ -4,6 +4,8 @@ import struct
 import subprocess
 from pathlib import Path
 
+from firmware_version import load_firmware_version
+
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT.parent / "src"
 STOCK = Path.cwd() / "SageApp_v1.02.50.bin"
@@ -103,6 +105,8 @@ def main():
     candidate.extend(b"\xff" * (0x2F00 - len(candidate)))
     candidate.extend(b"MM8BUILD" + bytes(32) + struct.pack("<II", 0x0103, 0))
     embedded_hash = hashlib.sha256(candidate).digest()
+    expected_hash = load_firmware_version()["embedded_build_hash"]
+    assert embedded_hash.hex() == expected_hash, "firmware build changed; update version.yml with a new release and hash"
     candidate[0x2F08:0x2F28] = embedded_hash
     assert len(candidate) <= 0x7000, "candidate exceeds MM800 application slot"
 

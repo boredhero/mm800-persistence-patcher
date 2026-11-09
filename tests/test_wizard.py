@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -26,6 +27,17 @@ class WizardTests(unittest.TestCase):
         with mock.patch("pathlib.Path.read_bytes", return_value=bytes(131072)):
             with self.assertRaises(RuntimeError):
                 mm800_patch_and_flash.extract_stock(Path("/tmp/unused"))
+
+    def test_preserve_original_backup_for_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "original.bin"
+            source.write_bytes(bytes(131072))
+            workdir = root / "work"
+            workdir.mkdir()
+            mm800_patch_and_flash.preserve_backup(workdir, source)
+            self.assertEqual((workdir / "mm800-full-backup-01.bin").read_bytes(), source.read_bytes())
+            self.assertEqual((workdir / "mm800-full-backup-02.bin").read_bytes(), source.read_bytes())
 
 
 if __name__ == "__main__":

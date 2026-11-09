@@ -23,6 +23,41 @@ class BuilderTests(unittest.TestCase):
     def test_parse_rgb_repeats_all_zones(self):
         self.assertEqual(mm800_persistence_tool.parse_rgb("00ff00"), bytes.fromhex("00ff00") * 15)
 
+    def test_parse_zone_rgb_returns_one_color(self):
+        self.assertEqual(mm800_persistence_tool.parse_zone_rgb("00ff00"), bytes.fromhex("00ff00"))
+
+
+class ZoneCommandTests(unittest.TestCase):
+    def test_set_zones_command_accepts_15_colors(self):
+        colors = [f"{index:06x}" for index in range(15)]
+        data = bytearray(64)
+        data[4:12] = b"MM8BUILD"
+        data[12:44] = bytes.fromhex(mm800_persistence_tool.FIRMWARE_VERSION["embedded_build_hash"])
+        device = mock.MagicMock()
+        device.__enter__.return_value.iap_debug.return_value = data
+        with mock.patch.object(mm800_persistence_tool, "MM800", return_value=device), \
+             mock.patch.object(sys, "argv", ["mm800_persistence_tool.py", "set-zones", *colors]):
+            mm800_persistence_tool.main()
+        device.__enter__.return_value.set_rgb.assert_called_once_with(
+            b"".join(bytes.fromhex(color) for color in colors)
+        )
+
+
+class FirmwareVersionTests(unittest.TestCase):
+    def test_matching_build_has_no_update_warning(self):
+        data = bytearray(64)
+        data[4:12] = b"MM8BUILD"
+        data[12:44] = bytes.fromhex(mm800_persistence_tool.FIRMWARE_VERSION["embedded_build_hash"])
+        self.assertIsNone(mm800_persistence_tool.firmware_update_warning(data))
+
+    def test_different_build_warns_with_update_instructions(self):
+        data = bytearray(64)
+        data[4:12] = b"MM8BUILD"
+        warning = mm800_persistence_tool.firmware_update_warning(data)
+        self.assertIn("git fetch && git pull", warning)
+        self.assertIn("--stock-backup", warning)
+        self.assertIn("does not require reflashing", warning)
+
 
 class HidTests(unittest.TestCase):
     def test_query_accepts_padded_64_byte_response(self):

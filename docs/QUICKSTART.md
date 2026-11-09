@@ -76,8 +76,18 @@ python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
 python3 tools/mm800_persistence_tool.py get-saved
 ```
 
-`00ff00` is green. Try `0000ff` for blue or `ffffff` for white. Each zone can
-also have a different color. The tool auto-locates the MM800 control interface.
+`00ff00` is green. Try `0000ff` for blue or `ffffff` for white. The tool
+auto-locates the MM800 control interface.
+
+To choose every zone separately, pass 15 colors to `set-zones` in zone order:
+
+```sh
+python3 tools/mm800_persistence_tool.py set-zones \
+  ff0000 ff8000 ffff00 00ff00 00ffff \
+  0000ff 8000ff ffffff ff0000 ff8000 \
+  ffff00 00ff00 00ffff 0000ff 8000ff
+python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
+```
 
 Set brightness level 2 and make it persistent:
 
@@ -86,10 +96,8 @@ python3 tools/mm800_persistence_tool.py brightness 2 --save
 ```
 
 Use `brightness 2` without `--save` to change only the live level. Live levels
-are 0–8; persistent levels are 0–3.
-
-The README includes a complete multicolor example with different RGB values in
-different zones.
+are 0–8; persistent levels are 0–3. The `--save` form saves the level without
+changing the current brightness.
 
 Before the first save, back up EEPROM:
 
@@ -100,6 +108,21 @@ python3 tools/mm800_persistence_tool.py dump-eeprom ../eeprom-before.bin
 The save command writes the current profile and checks every RGB byte. Live
 brightness remains separate: levels 0–8 are live and levels 0–3 can be saved.
 The 75% renderer cap is preserved.
+
+## Update later only if the firmware changes
+
+Normal color and brightness changes never require flashing. The control tool
+checks the installed build against `version.yml` and warns if a firmware update
+is needed. To update, keep your original stock backup and run:
+
+```sh
+git fetch && git pull
+python3 tools/mm800_patch_and_flash.py \
+  --stock-backup ../mm800-work/mm800-full-backup-01.bin \
+  --output-dir ../mm800-update
+```
+
+Use a new output directory. You do not need to restore stock before updating.
 
 ## Restore the original firmware
 

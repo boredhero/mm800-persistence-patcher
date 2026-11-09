@@ -5,10 +5,12 @@ import select
 from pathlib import Path
 
 from hidraw_locator import locate, note_failure, note_success
+from firmware_version import load_firmware_version
 
 PACKET_SIZE = 64
 EEPROM_DUMP_SIZE = 0xFC0
 DUMP_CHUNK = 56
+FIRMWARE_VERSION = load_firmware_version()
 
 
 class MM800:
@@ -107,29 +109,63 @@ class MM800:
         return bytes(result)
 
 
-def parse_rgb(text):
+def parse_zone_rgb(text):
     if len(text) != 6:
         raise argparse.ArgumentTypeError("RGB must be six hexadecimal digits")
     try:
-        rgb = bytes.fromhex(text)
+        return bytes.fromhex(text)
     except ValueError as error:
         raise argparse.ArgumentTypeError("RGB must be six hexadecimal digits") from error
-    return rgb * 15
+
+
+def parse_rgb(text):
+    return parse_zone_rgb(text) * 15
+
+
+def firmware_update_warning(data):
+    if bytes(data[4:12]) != b"MM8BUILD":
+        return (
+            "WARNING: no recognized patched-firmware build record was returned.\n"
+            "If this device has stock or old firmware, update the project with "
+            "`git fetch && git pull`, then run the flash wizard once."
+        )
+    installed_hash = bytes(data[12:44]).hex()
+    if installed_hash == FIRMWARE_VERSION["embedded_build_hash"]:
+        return None
+    return (
+        f"WARNING: installed firmware build {installed_hash} does not match firmware patch release "
+        f"{FIRMWARE_VERSION['firmware_patch_version']} in this checkout.\n"
+        "Update the project with: git fetch && git pull\n"
+        "Then reflash once with tools/mm800_patch_and_flash.py, passing --stock-backup "
+        "with the path to your original full stock backup and a new --output-dir.\n"
+        "Changing colors or brightness does not require reflashing."
+    )
+
+
+def warn_about_firmware(mm800):
+    try:
+        warning = firmware_update_warning(mm800.iap_debug())
+    except (OSError, RuntimeError, TimeoutError) as error:
+        warning = f"WARNING: could not verify the installed firmware build: {error}"
+    if warning:
+        print(warning)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Candidate-only MM800 EEPROM and RGB tool; never flashes firmware")
+    parser = argparse.ArgumentParser(description="MM800 persistence firmware control tool; never flashes firmware")
     parser.add_argument("--device", default="auto", help="explicit /dev/hidrawN path, or 'auto' for cached MM800 control interface discovery")
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("get-current")
     subparsers.add_parser("get-saved")
     subparsers.add_parser("iap-debug")
     subparsers.add_parser("chip-info")
-    set_parser = subparsers.add_parser("set-rgb")
+    set_parser = subparsers.add_parser("set-rgb", help="set all 15 zones to one color")
     set_parser.add_argument("rgb", type=parse_rgb, help="RRGGBB applied to all 15 zones; no EEPROM write")
+    zones_parser = subparsers.add_parser("set-zones", help="set 15 independent zone colors")
+    zones_parser.add_argument("zones", nargs=15, type=parse_zone_rgb, metavar="RRGGBB", help="colors for zones 1 through 15; no EEPROM write")
     brightness_parser = subparsers.add_parser("brightness")
     brightness_parser.add_argument("level", type=int, help="brightness level 0–8, or 0–3 with --save")
-    brightness_parser.add_argument("--save", action="store_true", help="also make the level persistent")
+    brightness_parser.add_argument("--save", action="store_true", help="save for future boots without changing live brightness")
     save_parser = subparsers.add_parser("save")
     save_parser.add_argument("--approve-eeprom-write", action="store_true", required=True)
     dump_parser = subparsers.add_parser("dump-eeprom")
@@ -137,17 +173,23 @@ def main():
     args = parser.parse_args()
 
     with MM800(args.device) as mm800:
+        data = mm800.iap_debug() if args.command == "iap-debug" else None
+        if data is None:
+            warn_about_firmware(mm800)
         if args.command == "get-current":
             print(mm800.current_rgb().hex())
         elif args.command == "get-saved":
             valid, rgb = mm800.saved_rgb()
             print(f"valid={valid} rgb={rgb.hex()}")
         elif args.command == "iap-debug":
-            data = mm800.iap_debug()
-            print(f"magic={bytes(data[4:12]).decode('ascii')}")
+            print(f"magic={bytes(data[4:12]).decode('ascii', errors='replace')}")
             print(f"embedded_build_hash={data[12:44].hex()}")
-            print(f"firmware_version=0x{int.from_bytes(data[44:48], 'little'):04x}")
+            print(f"stock_firmware_version=0x{int.from_bytes(data[44:48], 'little'):04x}")
+            print(f"repository_firmware_patch_release={FIRMWARE_VERSION['firmware_patch_version']}")
             print(f"flags={int.from_bytes(data[48:52], 'little')}")
+            warning = firmware_update_warning(data)
+            if warning:
+                print(warning)
         elif args.command == "chip-info":
             data = mm800.chip_info()
             part_id = int.from_bytes(data[5:9], "little")
@@ -163,9 +205,15 @@ def main():
         elif args.command == "set-rgb":
             mm800.set_rgb(args.rgb)
             print("live RGB verified; EEPROM unchanged")
+        elif args.command == "set-zones":
+            mm800.set_rgb(b"".join(args.zones))
+            print("live 15-zone RGB verified; EEPROM unchanged")
         elif args.command == "brightness":
             mm800.set_brightness(args.level, args.save)
-            print(f"brightness level {args.level} set; persistent={args.save}")
+            if args.save:
+                print(f"persistent brightness level {args.level} requested; live brightness unchanged")
+            else:
+                print(f"live brightness level {args.level} set; EEPROM unchanged")
         elif args.command == "save":
             mm800.save_current()
             print("saved RGB verified exactly; use a power cycle to test boot restore")

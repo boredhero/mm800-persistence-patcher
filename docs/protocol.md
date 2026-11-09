@@ -15,7 +15,10 @@ That cap is not a user brightness parameter and is not raised by this project.
   write EEPROM.
 - `0e 23`: return validity and the newest valid saved RGB profile.
 - `0e 24`: read-only EEPROM access in chunks of at most 56 bytes.
-- `0e 60`: return the 64-byte embedded build record.
+- `0e 60`: return the 64-byte embedded build record. Bytes 12–43 contain the
+  embedded build hash. The control tool compares it with `version.yml` to warn
+  when a firmware update is needed; the stock firmware version is a separate
+  value and is not the patcher's release number.
 
 GET24 also has a chip-info subcommand, `0e 24 ff ff 00`, returning part ID,
 ROM version, and UID without writing EEPROM.
