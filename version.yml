@@ -1,4 +1,4 @@
 # Increment the release number and update the hash only when firmware changes.
 # Host-script and documentation updates do not require reflashing.
 firmware_patch_version: 2
-embedded_build_hash: d07e6783a84b5bac6a2600c490912eab9607268cc85b9ac4685a2170ae5d0a0d
+embedded_build_hash: 96864b0674cccc59a2d8efd1adf109db3a1a2e12091a83bde824192ea01c8c55

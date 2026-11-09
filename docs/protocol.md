@@ -18,7 +18,7 @@ saved-profile query. Fields after byte 4 are:
 
 - `4`: saved status: 0 none, 1 static, 2 animation, `0xfd` unsupported record,
   or `0xfe` read error.
-- `5`: animation protocol version 1.
+- `5`: animation protocol version 2.
 - `6`: capabilities `0x07`: static, animation preview, and verified save.
 - `7`: runtime owner: 0 stock, 1 saved static, 2 saved animation, 3 host static,
   4 host animation. This is independent of saved-profile validity.
@@ -26,12 +26,13 @@ saved-profile query. Fields after byte 4 are:
 - `12..56`: saved canonical payload, zero-padded.
 - `57`: last save status; `0x7f` means no save attempted, `0x80` means queued
   or committing (`BUSY`), 0 means verified, and other values are failures.
-- `58..60`: supported public effect IDs `10 20 30`.
-- `61`: speed bitmask `0x07`; codes 0–2 exist, with per-effect restrictions below.
-- `62..63`: reserved zero.
+- `58..62`: supported public effect IDs `10 11 12 20 30`.
+- `63`: speed bitmask `0x07`; codes 0–2 exist, with per-effect restrictions below.
 
-`capabilities` fails closed if this versioned interface is absent. `get-profile`
-prints the committed recipe and runtime owner without exposing EEPROM metadata.
+`capabilities` fails closed if this versioned interface is absent. Wire protocol
+1 is not accepted; version 2 is required. EEPROM V1 static records remain
+readable and migrate only on an explicit save. `get-profile` prints the committed
+recipe and runtime owner without exposing EEPROM metadata.
 
 ## Animation preview and save
 
@@ -41,7 +42,7 @@ SET25 uses a complete 64-byte report:
 |---|---|
 | `0..1` | `07 25` |
 | `2` | persistence selector: `00` preview, `f0` save |
-| `3` | protocol version 1 |
+| `3` | protocol version 2 |
 | `4` | public effect ID |
 | `5` | canonical payload length |
 | `6` | flags, zero in version 1 |
@@ -69,6 +70,8 @@ IDs:
 | Public ID | CLI name | Payload | Behavior |
 |---|---|---|---|
 | `0x10` | `breathing` | `01 R G B` or `02 R G B` | One-color breathing, speed 1 or 2 |
+| `0x11` | `crossfade` | `speed A_R A_G A_B B_R B_G B_B`, speed 0–2 | Constructor 0 two-color crossfade with holds |
+| `0x12` | `fade-dark` | `speed A_R A_G A_B B_R B_G B_B`, speed 1–2 | Constructor 1 two-color fade through dark |
 | `0x20` | `rainbow` | `00`, `01`, or `02` | Uniform rainbow, speed 0–2 |
 | `0x30` | `moving-rainbow` | `00 00`, `01 00`, or `02 00` | Moving rainbow, speed 0–2, stock direction 0 |
 

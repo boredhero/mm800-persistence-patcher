@@ -12,7 +12,7 @@ PACKET_SIZE = 64
 EEPROM_DUMP_SIZE = 0xFC0
 DUMP_CHUNK = 56
 FIRMWARE_VERSION = load_firmware_version()
-EFFECT_IDS = {"breathing": 0x10, "rainbow": 0x20, "moving-rainbow": 0x30}
+EFFECT_IDS = {"breathing": 0x10, "crossfade": 0x11, "fade-dark": 0x12, "rainbow": 0x20, "moving-rainbow": 0x30}
 EFFECT_NAMES = {value: key for key, value in EFFECT_IDS.items()}
 OWNER_NAMES = {0: "stock", 1: "saved-static", 2: "saved-animation", 3: "host-static", 4: "host-animation"}
 
@@ -80,7 +80,7 @@ class MM800:
 
     def profile(self):
         response = self.query(bytearray([0x0E, 0x25]) + bytes(PACKET_SIZE - 2), 64)
-        if response[5] != 1:
+        if response[5] != 2:
             raise RuntimeError(f"unsupported effect protocol version {response[5]}; update the firmware")
         if response[10] > 45:
             raise RuntimeError("profile response has an invalid payload length")
@@ -95,8 +95,8 @@ class MM800:
             "flags": response[11],
             "payload": bytes(response[12:12 + response[10]]),
             "last_save_status": response[57],
-            "effect_ids": list(response[58:61]),
-            "speed": response[61],
+            "effect_ids": list(response[58:63]),
+            "speed": response[63],
         }
 
     def capabilities(self):
@@ -129,7 +129,7 @@ class MM800:
         capabilities = self.capabilities()
         if effect_id not in capabilities["effect_ids"]:
             raise RuntimeError(f"installed firmware does not support effect {effect}")
-        packet = bytearray([0x07, 0x25, 0xF0 if persistent else 0x00, 0x01,
+        packet = bytearray([0x07, 0x25, 0xF0 if persistent else 0x00, 0x02,
                             effect_id, len(payload), 0x00]) + payload
         packet.extend(bytes(PACKET_SIZE - len(packet)))
         self.send(packet)
@@ -192,18 +192,16 @@ def parse_rgb(text):
 def encode_effect(effect, color=None, speed=1):
     if speed not in (0, 1, 2):
         raise ValueError("speed must be 0, 1, or 2")
-    if effect == "breathing":
-        if color is None:
-            raise ValueError("breathing requires one RRGGBB color")
-        if speed == 0:
-            raise ValueError("breathing speed 0 is broken and unsupported; use speed 1 or 2")
-        if isinstance(color, str):
-            color = parse_zone_rgb(color)
-        payload = bytes([speed]) + bytes(color)
-    else:
-        if color is not None:
-            raise ValueError(f"{effect} does not accept a color")
-        payload = bytes([speed, 0]) if effect == "moving-rainbow" else bytes([speed])
+    colors = [] if color is None else ([color] if isinstance(color, (str, bytes, bytearray)) else list(color))
+    required = {"breathing": 1, "crossfade": 2, "fade-dark": 2, "rainbow": 0, "moving-rainbow": 0}[effect]
+    if len(colors) != required:
+        raise ValueError(f"{effect} requires {required} RGB color(s)")
+    if effect in ("breathing", "fade-dark") and speed == 0:
+        raise ValueError(f"{effect} speed 0 is broken and unsupported; use speed 1 or 2")
+    rgb = b"".join(parse_zone_rgb(value) if isinstance(value, str) else bytes(value) for value in colors)
+    payload = bytes([speed]) + rgb
+    if effect == "moving-rainbow":
+        payload += bytes([0])
     return EFFECT_IDS[effect], payload
 
 
@@ -265,8 +263,8 @@ def main():
     zones_parser.add_argument("zones", nargs=15, type=parse_zone_rgb, metavar="RRGGBB", help="colors for zones 1 through 15; no EEPROM write")
     effect_parser = subparsers.add_parser("effect", help="preview a device-run animation, or save it with --save")
     effect_parser.add_argument("effect", choices=tuple(EFFECT_IDS))
-    effect_parser.add_argument("color", nargs="?", help="RRGGBB for breathing; rainbow effects take no color")
-    effect_parser.add_argument("--speed", type=int, choices=(0, 1, 2), default=1, help="speed 1–2 for breathing, 0–2 for rainbow effects")
+    effect_parser.add_argument("color", nargs="*", help="one RRGGBB for breathing, two for crossfade/fade-dark, none for rainbow")
+    effect_parser.add_argument("--speed", type=int, choices=(0, 1, 2), default=1, help="speed 1–2 for breathing/fade-dark, 0–2 for crossfade/rainbow effects")
     effect_parser.add_argument("--save", action="store_true", help="explicitly write and verify this exact recipe in EEPROM")
     brightness_parser = subparsers.add_parser("brightness")
     brightness_parser.add_argument("level", type=int, help="brightness level 0–8, or 0–3 with --save")

@@ -88,6 +88,8 @@ Preview device-run animations without writing EEPROM:
 ```sh
 python3 tools/mm800_persistence_tool.py effect breathing 8000ff
 python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2
+python3 tools/mm800_persistence_tool.py effect crossfade ff0000 0000ff --speed 0
+python3 tools/mm800_persistence_tool.py effect fade-dark ff0000 0000ff --speed 2
 python3 tools/mm800_persistence_tool.py effect rainbow --speed 0
 python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 2
 ```
@@ -100,9 +102,11 @@ python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2 --save
 python3 tools/mm800_persistence_tool.py get-profile
 ```
 
-Breathing supports speeds 1–2; both rainbow effects support 0–2. The broken
-fast-breathing speed 0 preset is rejected. Use `capabilities` to check support
-and `release` to return to stock animation without erasing the saved profile.
+Breathing and fade-dark support speeds 1–2; crossfade and both rainbow effects
+support 0–2. Crossfade takes two colors and holds them during transitions;
+fade-dark takes two colors and fades through a dark interval. Broken speed 0 is
+rejected for breathing and fade-dark. Use `capabilities` to check support and
+`release` to return to stock animation without erasing the saved profile.
 Uploaded frame sequences are not supported.
 
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and

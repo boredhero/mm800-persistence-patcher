@@ -9,9 +9,9 @@ No device or EEPROM write is part of this validation.
 
 Candidate identities:
 
-- Application SHA-256: `f6b151f467094f5befc4bbf9d1ebfefba21f02d1452af97e853f25bf5ddfd7cd`
-- Embedded build hash: `d07e6783a84b5bac6a2600c490912eab9607268cc85b9ac4685a2170ae5d0a0d`
-- Full ISP SHA-256 using the preserved original backup: `acf8b09165575626b1836c2c463f21f91e1aeeaac66f74b59baf1da9407f6004`
+- Application SHA-256: `9188c2e6bed1eb568309681dc81dd07291248aad4205337e5fc3c99d9e2105ce`
+- Embedded build hash: `96864b0674cccc59a2d8efd1adf109db3a1a2e12091a83bde824192ea01c8c55`
+- Full ISP SHA-256 using the preserved original backup: `ff8ad0fa4f5efe454463a42ee7eaae7e91b38722b3d9735050e353b7b91be6a4`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
 
 The full image preserves the original bootloader and installs the same candidate
@@ -20,9 +20,9 @@ hardware-tested release.
 
 ## Offline evidence
 
-The final patched binary passed 23 CPU test methods, including per-byte corrupted
-record, interrupt-interleaving, overflow, zero-sequence-sentinel, and all eight
-valid effect/speed combinations, plus 18 host-tool tests. Coverage includes:
+The final patched binary passed 24 CPU test methods, including per-byte corrupted
+record, interrupt-interleaving, overflow, zero-sequence-sentinel, unknown-ID, and
+all 13 valid effect/speed combinations, plus 19 host-tool tests. Coverage includes:
 
 - Final SET/GET dispatch and capability discovery.
 - Identical preview/save parameters with only the persistence selector changed.
@@ -37,6 +37,9 @@ valid effect/speed combinations, plus 18 host-tool tests. Coverage includes:
   three presets; frozen output cannot satisfy these assertions.
 - Breathing speeds 1–2 and both rainbow effects at speeds 0–2, with exact
   constructor period/velocity checks. Broken breathing speed 0 remains rejected.
+- Constructor 0 two-color crossfade with holds at speeds 0–2 and constructor 1
+  fade-through-dark at speeds 1–2, including full A→B→A cycles and hold/dark
+  intervals. Unknown effects are rejected in packets and CRC-valid records.
 - Moving-rainbow rollover at its exact 87-tick output boundary for every speed,
   including counters seeded near the former 32-bit multiplication overflow.
 - Deliberate instruction-limit exhaustion, which must fail rather than pass as a

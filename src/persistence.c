@@ -11,9 +11,11 @@
 #define KIND_STATIC 0u
 #define KIND_ANIMATION 1u
 #define EFFECT_BREATHING 0x10u
+#define EFFECT_CROSSFADE 0x11u
+#define EFFECT_FADE_DARK 0x12u
 #define EFFECT_RAINBOW 0x20u
 #define EFFECT_MOVING_RAINBOW 0x30u
-#define PROTOCOL_VERSION 1u
+#define PROTOCOL_VERSION 2u
 #define SPEED_CODE 1u
 #define SAVE_NONE 0x7fu
 #define SAVE_BUSY 0x80u
@@ -283,6 +285,8 @@ static uint32_t effect_length(uint8_t effect)
 {
     if (effect == EFFECT_BREATHING)
         return 4;
+    if (effect == EFFECT_CROSSFADE || effect == EFFECT_FADE_DARK)
+        return 7;
     if (effect == EFFECT_RAINBOW)
         return 1;
     if (effect == EFFECT_MOVING_RAINBOW)
@@ -296,9 +300,12 @@ static uint32_t recipe_valid(uint8_t kind, uint8_t effect, uint8_t length, uint8
         return 0;
     if (kind == KIND_STATIC)
         return effect == 0 && length == RGB_SIZE;
+    if (kind == KIND_ANIMATION && effect != EFFECT_BREATHING && effect != EFFECT_CROSSFADE &&
+        effect != EFFECT_FADE_DARK && effect != EFFECT_RAINBOW && effect != EFFECT_MOVING_RAINBOW)
+        return 0;
     if (kind != KIND_ANIMATION || length != effect_length(effect) || payload[0] > 2)
         return 0;
-    if (effect == EFFECT_BREATHING && payload[0] == 0)
+    if ((effect == EFFECT_BREATHING || effect == EFFECT_FADE_DARK) && payload[0] == 0)
         return 0;
     return effect != EFFECT_MOVING_RAINBOW || payload[1] == 0;
 }
@@ -397,6 +404,12 @@ static void apply_active_animation(uint8_t owner)
         constructor = 1;
         selector = 0;
         copy_bytes(config + 3, active_recipe.payload + 1, 3);
+    } else if (active_recipe.effect == EFFECT_CROSSFADE || active_recipe.effect == EFFECT_FADE_DARK) {
+        constructor = active_recipe.effect == EFFECT_CROSSFADE ? 0 : 1;
+        selector = 0;
+        config[0] = 1;
+        copy_bytes(config + 3, active_recipe.payload + 1, 3);
+        copy_bytes(config + 7, active_recipe.payload + 4, 3);
     } else if (active_recipe.effect == EFFECT_RAINBOW) {
         constructor = 2;
         selector = 1;
@@ -652,9 +665,11 @@ void get_profile_response(uint8_t *packet)
     packet[7] = *OWNER;
     packet[57] = save_pending() ? SAVE_BUSY : *LAST_SAVE_STATUS;
     packet[58] = EFFECT_BREATHING;
-    packet[59] = EFFECT_RAINBOW;
-    packet[60] = EFFECT_MOVING_RAINBOW;
-    packet[61] = 0x07;
+    packet[59] = EFFECT_CROSSFADE;
+    packet[60] = EFFECT_FADE_DARK;
+    packet[61] = EFFECT_RAINBOW;
+    packet[62] = EFFECT_MOVING_RAINBOW;
+    packet[63] = 0x07;
 }
 
 static void get_chip_info_response(uint8_t *packet)

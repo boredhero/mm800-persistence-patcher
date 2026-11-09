@@ -145,17 +145,34 @@ class EffectTests(unittest.TestCase):
         sleep.assert_called_once_with(0.01)
 
     def test_all_valid_effect_speed_combinations(self):
+        colors = ["ff0000", "0000ff"]
         for speed in (1, 2):
             _, payload = mm800_persistence_tool.encode_effect("breathing", "8000ff", speed)
             self.assertEqual(payload, bytes([speed, 0x80, 0, 0xFF]))
-        for effect in ("rainbow", "moving-rainbow"):
+            _, payload = mm800_persistence_tool.encode_effect("fade-dark", colors, speed)
+            self.assertEqual(payload, bytes([speed, 0xFF, 0, 0, 0, 0, 0xFF]))
+        for effect in ("rainbow", "moving-rainbow", "crossfade"):
             for speed in (0, 1, 2):
-                _, payload = mm800_persistence_tool.encode_effect(effect, speed=speed)
+                _, payload = mm800_persistence_tool.encode_effect(effect, colors if effect == "crossfade" else None, speed)
                 self.assertEqual(payload[0], speed)
         with self.assertRaises(ValueError):
             mm800_persistence_tool.encode_effect("breathing", "8000ff", 0)
         with self.assertRaises(ValueError):
+            mm800_persistence_tool.encode_effect("fade-dark", colors, 0)
+        with self.assertRaises(ValueError):
             mm800_persistence_tool.encode_effect("rainbow", speed=3)
+
+    def test_two_color_save_packet_and_readback(self):
+        mm800 = self.make_mm800()
+        payload = bytes([2, 0xFF, 0, 0, 0, 0, 0xFF])
+        committed = {"status": 2, "kind": 1, "effect": 0x11, "payload": payload, "last_save_status": 0}
+        with mock.patch.object(mm800, "capabilities", return_value={"effect_ids": [0x11]}), \
+             mock.patch.object(mm800, "profile", return_value=committed), \
+             mock.patch("os.write", return_value=64) as write:
+            mm800.set_effect("crossfade", ["ff0000", "0000ff"], persistent=True, speed=2)
+        packet = write.call_args.args[1]
+        self.assertEqual(packet[:7], bytes([0x07, 0x25, 0xF0, 2, 0x11, 7, 0]))
+        self.assertEqual(packet[7:14], payload)
 
     def test_rainbow_rejects_color(self):
         with self.assertRaises(ValueError):

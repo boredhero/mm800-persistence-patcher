@@ -49,7 +49,7 @@ def record_v2(kind, effect, payload, sequence):
 
 
 def effect_packet(effect, payload, save=False):
-    packet = bytearray([0x07, 0x25, 0xF0 if save else 0, 1, effect, len(payload), 0]) + payload
+    packet = bytearray([0x07, 0x25, 0xF0 if save else 0, 2, effect, len(payload), 0]) + payload
     packet.extend(bytes(64 - len(packet)))
     return packet
 
@@ -78,9 +78,9 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         stock = Path(STOCK).read_bytes()
         candidate = Path(CANDIDATE).read_bytes()
         assert hashlib.sha256(stock).hexdigest() == "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
-        assert hashlib.sha256(candidate).hexdigest() == "f6b151f467094f5befc4bbf9d1ebfefba21f02d1452af97e853f25bf5ddfd7cd"
+        assert hashlib.sha256(candidate).hexdigest() == "9188c2e6bed1eb568309681dc81dd07291248aad4205337e5fc3c99d9e2105ce"
         assert candidate[0x3F00:0x3F08] == b"MM8BUILD"
-        assert candidate[0x3F08:0x3F28].hex() == "d07e6783a84b5bac6a2600c490912eab9607268cc85b9ac4685a2170ae5d0a0d"
+        assert candidate[0x3F08:0x3F28].hex() == "96864b0674cccc59a2d8efd1adf109db3a1a2e12091a83bde824192ea01c8c55"
 
     def setUp(self):
         self.harness = FirmwareHarness(CANDIDATE)
@@ -101,8 +101,8 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         h = self.harness
         self.boot()
         response, _ = h.dispatch(bytearray([0x0E, 0x25]) + bytes(62))
-        self.assertEqual((response[4], response[5], response[6]), (0, 1, 7))
-        self.assertEqual(list(response[58:62]), [0x10, 0x20, 0x30, 7])
+        self.assertEqual((response[4], response[5], response[6]), (0, 2, 7))
+        self.assertEqual(list(response[58:64]), [0x10, 0x11, 0x12, 0x20, 0x30, 7])
         preview = effect_packet(0x10, bytes([1, 0x80, 0, 0xFF]))
         save = bytearray(preview)
         save[2] = 0xF0
@@ -153,6 +153,21 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
             (0x10, bytes([2, 0xFF, 0, 0]), 3000, {
                 0: "040000" * 15, 15: "560000" * 15, 45: "fe0000" * 15, 90: "040000" * 15,
             }),
+            (0x11, bytes([0, 0xFF, 0, 0, 0, 0, 0xFF]), 1500, {
+                0: "fe0000" * 15, 15: "7e007e" * 15, 30: "0000fe" * 15,
+            }),
+            (0x11, bytes([1, 0xFF, 0, 0, 0, 0, 0xFF]), 3000, {
+                0: "fe0000" * 15, 45: "7e007e" * 15, 60: "0000fc" * 15, 90: "0000fe" * 15,
+            }),
+            (0x11, bytes([2, 0xFF, 0, 0, 0, 0, 0xFF]), 6000, {
+                0: "fe0000" * 15, 90: "7e007e" * 15, 180: "0000fe" * 15,
+            }),
+            (0x12, bytes([1, 0xFF, 0, 0, 0, 0, 0xFF]), 1000, {
+                0: "fe0000" * 15, 15: "000000" * 15, 30: "0000fe" * 15,
+            }),
+            (0x12, bytes([2, 0xFF, 0, 0, 0, 0, 0xFF]), 3000, {
+                0: "fe0000" * 15, 45: "000000" * 15, 90: "0000fe" * 15,
+            }),
             (0x20, bytes([0]), 1500, {0: "fe0000" * 15, 15: "00fefe" * 15, 30: "fe0000" * 15}),
             (0x20, bytes([1]), 3000, {0: "fe0000" * 15, 15: "fefe00" * 15, 45: "00fefe" * 15, 90: "fe0000" * 15}),
             (0x20, bytes([2]), 6000, {0: "fe0000" * 15, 90: "00fefe" * 15, 180: "fe0000" * 15}),
@@ -171,7 +186,8 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
                     h.call(self.symbols["lighting_poll_guard"])
                     if tick == 0:
                         engine = struct.unpack("<I", h.read(ENGINE, 4))[0]
-                        self.assertEqual(h.read(engine, 1)[0], 1 if effect == 0x10 else (2 if effect == 0x20 else 3))
+                        expected_type = {0x10: 1, 0x11: 0, 0x12: 1, 0x20: 2, 0x30: 3}[effect]
+                        self.assertEqual(h.read(engine, 1)[0], expected_type)
                         offset = 20 if effect == 0x30 else 4
                         self.assertEqual(struct.unpack("<I", h.read(engine + offset, 4))[0], timing)
                     frame = h.read(RGB, 45)
@@ -197,6 +213,31 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
                 h.call(self.symbols["lighting_poll_guard"])
                 self.assertEqual(h.read(RGB, 45), initial)
                 self.assertEqual(struct.unpack("<I", h.read(COUNTER, 4))[0], 1)
+
+    def test_two_color_full_a_b_a_cycles(self):
+        for effect, speed, period in [
+            (0x11, 0, 30), (0x11, 1, 90), (0x11, 2, 180),
+            (0x12, 1, 30), (0x12, 2, 90),
+        ]:
+            with self.subTest(effect=effect, speed=speed):
+                h = FirmwareHarness(CANDIDATE)
+                h.initialize_ram()
+                h.call(self.symbols["boot_restore"])
+                payload = bytes([speed, 0xFF, 0, 0, 0, 0, 0xFF])
+                h.dispatch(effect_packet(effect, payload), pump=False)
+                for tick in range(period * 2 + 1):
+                    h.call(self.symbols["lighting_poll_guard"])
+                    frame = h.read(RGB, 45)
+                    if tick == 0:
+                        self.assertEqual(frame, bytes([0xFE, 0, 0]) * 15)
+                    if tick == period * 2:
+                        self.assertEqual(frame, bytes([0xFC, 0, 0]) * 15)
+                    if tick == period:
+                        self.assertEqual(frame, bytes([0, 0, 0xFE]) * 15)
+                    if effect == 0x11 and tick == period // 3:
+                        self.assertEqual(frame, bytes([0xFC, 0, 0]) * 15)
+                    if effect == 0x12 and tick == period // 2:
+                        self.assertEqual(frame, bytes(45))
 
     def test_v1_static_and_all_stock_brightness_levels(self):
         rgb = bytes(range(45))
@@ -245,6 +286,7 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         invalid = []
         invalid.append(effect_packet(0x10, bytes([0, 1, 2, 3])))
         invalid.append(effect_packet(0x11, bytes([1])))
+        invalid.append(effect_packet(0x40, bytes([])))
         invalid.append(effect_packet(0x20, bytes([1, 0])))
         invalid.append(effect_packet(0x30, bytes([1, 1])))
         invalid.append(effect_packet(0x20, bytes([2])))
@@ -304,6 +346,13 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         h2.dispatch(command(0x23))
         self.assertEqual(h2.read(SAVE_STATUS, 1)[0], 0xFD)
         self.assertEqual(len(h2.writes()), 0)
+        h3 = FirmwareHarness(CANDIDATE)
+        h3.mock_eeprom[0x100:0x140] = record_v2(1, 0x40, bytes([]), 9)
+        h3.initialize_ram()
+        h3.call(self.symbols["boot_restore"])
+        h3.dispatch(command(0x23))
+        self.assertEqual(h3.read(SAVE_STATUS, 1)[0], 0xFD)
+        self.assertEqual(len(h3.writes()), 0)
 
     def test_failed_readback_reports_failure(self):
         h = self.harness
