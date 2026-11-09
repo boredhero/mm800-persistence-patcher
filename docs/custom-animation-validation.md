@@ -2,9 +2,9 @@
 
 ## Candidate identity
 
-- Application SHA-256: `d80cf5ab6815d97fba0b7a349aee09e64bad3a5d205f69c71166c8616e617f61`
-- Embedded build hash: `f250836b3fa1a864fab2c3ab899ba2ae2f23ec52b27f19b52a2b5f10f5b0ca65`
-- Full ISP SHA-256 using the preserved original backup: `e0872e34ce1a990b863f74a821786575450217e010f295e763a7c781c38f4676`
+- Application SHA-256: `d07ac4094736cdc7b24946e9dc01f7d97c3aeafa39a448b0ce71a78d1c209c26`
+- Embedded build hash: `645e9793f4a7459b65fc72b0f07d07cb14b0adcfc771c4334fd3764c0786a804`
+- Full ISP SHA-256 using the preserved original backup: `3818f2a463749920824a9b7444449783ef8c20340c07c01c04cf0df8515620b6`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
 
 The candidate is preserved outside the repository at:
@@ -18,7 +18,7 @@ candidate. These hashes identify an offline build, not a hardware-tested release
 
 ## Offline coverage
 
-All 82 tests pass, including 4 final-binary custom firmware tests and the previous
+All 83 tests pass, including 5 final-binary custom firmware tests and the previous
 animation/host suites. Covered behavior:
 
 - Dictionary raw/palette and delta raw/palette upload and playback.

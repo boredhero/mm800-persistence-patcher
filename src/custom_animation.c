@@ -511,8 +511,12 @@ static uint32_t boot_bank(uint32_t bank, uint32_t generation)
 
 uint32_t custom_boot(void)
 {
-    if (custom_state.decoding)
-        return 0;
+    custom_state.decoding = 0;
+    custom_state.total_size = 0;
+    custom_state.codec = 0;
+    custom_state.index = 0;
+    custom_state.delta_offset = 0;
+    custom_state.remaining = 0;
     runtime_owner_ram = 0;
     custom_state.state = CUSTOM_STATE_EMPTY;
     custom_state.generation = 0;

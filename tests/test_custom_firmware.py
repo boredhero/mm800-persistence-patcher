@@ -105,6 +105,15 @@ class CustomFirmwareTests(unittest.TestCase):
         self.harness.call(self.symbols["custom_tick"])
         self.assertEqual(self.harness.read(RGB, 45), frames[0])
 
+    def test_unknown_patch_ram_initializes_capability_state(self):
+        self.harness.write(0x10001900, bytes([0xA5]) * 512)
+        self.harness.call(self.symbols["boot_restore"])
+        response, _ = self.harness.dispatch(bytearray([0x0E, 0x26]) + bytes(62))
+        self.assertEqual(response[4], 1)
+        self.assertEqual(response[5], 0)
+        self.assertEqual(response[6], 0x1F)
+        self.assertEqual(int.from_bytes(response[9:11], "little"), 1728)
+
     def test_static_takeover_does_not_erase_custom_bank(self):
         animation = optimize_animation_document(load_animation_document(EXAMPLE), timing="round")
         data = __import__("animation_brightness").encode_envelope(animation)
