@@ -207,3 +207,29 @@ python3 tools/mm800_persistence_tool.py release
 
 Breathing and fade-dark reject speed 0 because that stock preset is broken.
 Crossfade and both rainbow effects accept speed 0.
+
+## Load a JSON custom animation
+
+Run these commands from the repository directory. The included purple example
+rotates a smooth 15-shade lilac-to-midnight-purple gradient around all 15 zones:
+
+```sh
+# Check the JSON and see its exact colors, frames, timing, and encoded size
+python3 tools/mm800_custom_animation.py validate examples/purple-rotation.json
+python3 tools/mm800_custom_animation.py analyze examples/purple-rotation.json
+
+# Save it as the device's persistent animation; no firmware reflash is needed
+python3 tools/mm800_custom_animation.py install examples/purple-rotation.json
+
+# Confirm that the device reports a valid committed animation
+python3 tools/mm800_custom_animation.py device-storage
+```
+
+The animation returns after power loss without running these commands again.
+Installing a different JSON file replaces the persistent custom animation, not
+the firmware. Host lighting software can still override it temporarily; disable
+that software while testing if it changes the pad unexpectedly.
+
+For a different example, substitute `examples/fireflies.json`. To use your own
+animation, substitute the path to your JSON file. See
+`docs/custom-animation-schema.md` for the authoring format.
