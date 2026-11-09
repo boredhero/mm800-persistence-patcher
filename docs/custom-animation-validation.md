@@ -1,42 +1,69 @@
-# Custom animation candidate: offline validation
+# Custom animation validation
 
-## Candidate identity
+## Tested firmware identity
 
-- Application SHA-256: `ffd05cb3f1b58280a79801844d75e9334b48435b46bae468572e1330a88728c6`
-- Embedded build hash: `5b30348a8218754d290f69fa2b9382715e580deef74c695d0732847738775452`
-- Full ISP SHA-256 using the preserved original backup: `7c5a6ccd626002cb7a20bafa9e54714528cc3531fed5d01bb952e1569b9dfdde`
+- Application SHA-256: `732fd06bca1237e5878c6de4cb0989b1596856b8609bf114ec67637f1e40dedd`
+- Embedded build hash: `2fdd9f17c820db213cceb9feb84736f47fa1bec1a9499c354940577064e93b4c`
+- Full ISP SHA-256 using the preserved original backup: `6e144157c0ec3c8bc7c10995cc2cbe41938c8fbe428c44fdd4a2751c5d048d6c`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
+- Firmware patch release: 6
 
 The candidate is preserved outside the repository at:
 
 ```text
-/home/noah/Downloads/MM800-firmware/analysis/custom-animation-candidate-v3/
+/home/noah/Downloads/MM800-firmware/analysis/custom-animation-candidate-v6-ram-cache/
 ```
 
-No hardware installation or validation has occurred for this custom-animation
-candidate. These hashes identify an offline build, not a hardware-tested release.
+The full 131,072-byte ISP write matched the candidate exactly on readback. The
+normal application interface confirmed the embedded build hash above.
 
 ## Offline coverage
 
-All 83 tests pass, including 5 final-binary custom firmware tests and the previous
-animation/host suites. Covered behavior:
+All 86 checks pass, including eight final-binary custom firmware tests and the
+previous animation/host suites. Covered behavior:
 
 - Dictionary raw/palette and delta raw/palette upload and playback.
 - Brightness-envelope upload, boot restoration, loop restart, and per-zone gain.
+- All 176 frames of the 14-track, 1,040-byte fireflies recipe, including loop restart.
+- Zero EEPROM reads during steady-state envelope playback.
+- Fail-closed rejection of 154-keyframe and 16-color envelope records.
+- Correct descending-fade rounding and the `65535^2` combined-gain divisor.
+- USB data-call length initialization and word-aligned EEPROM source buffers.
 - Exact committed recipe/readback and versioned capability query.
 - Inactive-bank writes, upload abort, interrupted upload recovery, and stock RGB takeover.
 - Existing static profiles, built-in effects, brightness commands, and recovery baseline.
-- Actual initial MSP and instruction-limit failures.
+- Actual initial MSP, bounded 1,503-byte patch-state reservation, and instruction-limit failures.
 - JSON schema, optimizer, palette boundaries, corruption, fixed-point math, and deterministic fireflies.
 
-The decoder reads EEPROM incrementally; it does not allocate an entire animation
-in RAM. The patch-state reservation is bounded to 512 bytes.
+Codec 3 preloads at most 153 keyframes, 15 track states, and 15 base colors into
+reserved RAM. It does not read EEPROM during normal playback after initializing
+the track tables. Dictionary and delta codecs retain incremental EEPROM decoding.
 
-## Hardware gate
+## Hardware results
 
-Before calling the candidate hardware-tested, verify full-ISP readback and the
-embedded hash, then test JSON install, playback timing, loop boundaries, finite
-ends, power-loss restoration, stock-driver bursts, brightness, reconnect,
-suspend/resume, and firmware-upgrade data preservation. Actual USB ROM stack
-usage, electrical timing, physical adjacency, and worst-case interrupt nesting
-remain unproven. Emulator results are not hardware validation.
+The real MM800 restored custom generation 2, a 1,040-byte brightness-envelope
+animation, after full-ISP firmware replacement and normal reconnection. No host
+animation upload was needed after reconnecting.
+
+A complete 32-query sample over 6.92 seconds observed:
+
+- Up to four simultaneously lit zones.
+- Fourteen distinct zone positions.
+- Responsive USB RGB reads throughout the cycle.
+- `state=2`, `valid=1`, `size=1040`, `generation=2`, and `status=0` afterward.
+- Advertised envelope limits of 153 keyframes and 15 colors.
+
+The user also visually confirmed the animation. Earlier hardware testing verified
+live brightness commands, ordinary RGB takeover, and power-cycle restoration of
+the smaller two-track example. Current-binary stock behavior is covered by the
+final-binary emulator suite.
+
+## Remaining limits
+
+This is targeted hardware validation, not proof of every animation or lifecycle
+path. Electrical timing, physical zone adjacency, worst-case interrupt nesting,
+and USB ROM stack usage remain unproven. Suspend/resume, finite end behavior,
+malformed-input handling, and stock-driver burst behavior have offline coverage
+but were not all retested on this hardware. Physical adjacency was intentionally
+left unconstrained in the four-zone example because no verified physical map is
+available. Emulator results alone are not hardware validation.

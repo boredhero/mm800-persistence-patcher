@@ -70,6 +70,7 @@ dispatch_set_hook:
     bx r0
 .Lcustom_data:
     mov r0, r4
+    movs r1, #64
     bl custom_upload_data
     ldr r0, =0x32fb
     bx r0

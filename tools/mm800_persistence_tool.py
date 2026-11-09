@@ -96,6 +96,8 @@ class MM800:
             "max_palette": int.from_bytes(response[27:29], "little"),
             "max_tracks": int.from_bytes(response[29:31], "little"),
             "max_duration_ticks": int.from_bytes(response[31:35], "little"),
+            "max_envelope_keyframes": int.from_bytes(response[35:37], "little"),
+            "max_envelope_colors": int.from_bytes(response[37:39], "little"),
         }
 
     def custom_begin(self, size, codec):
@@ -120,6 +122,13 @@ class MM800:
             raise RuntimeError(f"device does not support custom animation codec {codec}")
         if len(data) > capabilities["capacity"]:
             raise RuntimeError(f"animation is {len(data) - capabilities['capacity']} bytes over the device budget")
+        if codec == 3:
+            keyframes = int.from_bytes(data[16:18], "little")
+            colors = int.from_bytes(data[12:14], "little")
+            if keyframes > capabilities["max_envelope_keyframes"]:
+                raise RuntimeError(f"envelope has {keyframes} keyframes; device limit is {capabilities['max_envelope_keyframes']}")
+            if colors > capabilities["max_envelope_colors"]:
+                raise RuntimeError(f"envelope has {colors} colors; device limit is {capabilities['max_envelope_colors']}")
         self.custom_begin(len(data), codec)
         try:
             for offset in range(0, len(data), 48):

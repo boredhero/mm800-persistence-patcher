@@ -17,9 +17,13 @@
 - `27..28`: maximum palette colors, 256.
 - `29..30`: maximum tracks, 15.
 - `31..34`: maximum duration in ticks, 65,535.
+- `35..36`: maximum envelope keyframes, 153.
+- `37..38`: maximum envelope base colors, 15.
 
 Connected installation must query this before writing and reject unsupported
-codecs or oversized payloads before the first upload command.
+codecs, oversized payloads, or excessive envelope RAM requirements before the
+first upload command. The 153-keyframe and 15-color limits apply only to codec 3;
+dictionary and delta palettes can still contain up to 256 colors.
 
 ## Upload: SET26
 
@@ -44,3 +48,7 @@ A valid custom bank uses runtime owner 5, separate from stock, saved static,
 saved built-in animation, and host live control. Static RGB/mode takeover remains
 reliable. Boot validates the newest valid bank and falls back to the older valid
 bank if the newest is corrupt. Suspend/resume preserves the committed recipe.
+
+Envelope playback preloads its keyframes and base colors into reserved RAM after
+validation. Normal envelope ticks perform no EEPROM reads after track-table
+initialization, preventing large tracks from starving USB request handling.

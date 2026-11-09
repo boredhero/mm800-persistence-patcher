@@ -10,7 +10,7 @@ bytes are allowed.
 |---:|---|---|
 | 0 | 4 bytes | Magic `MM8A` |
 | 4 | u8 | Format version 1 |
-| 5 | u8 | Codec: 1 dictionary, 2 delta |
+| 5 | u8 | Codec: 1 dictionary, 2 delta, 3 brightness envelope |
 | 6 | u8 | Flags: bit 0 loop, bit 1 finite end-off |
 | 7 | u8 | Index width: 0 raw RGB, 4-bit palette, 8-bit palette |
 | 8 | u16 | Header size, exactly 32 |
@@ -90,8 +90,9 @@ strictly increase, and end at the duration. Gains use the same fixed-point
 semantics as the host. Base-palette widths are 4 or 8 bits, so more than 256 base
 colors makes this candidate unavailable.
 
-The decoder samples at 34 ms ticks using the original base colors and combined
-zone/global gain, then applies the existing frame deduplication and timeline
-merge rules. It does not require continuous-time playback or a second firmware
-player. This is a storage candidate only until decoder cost, RAM, and hardware
-timing are validated.
+The device samples at 34 ms ticks using the original base colors and combined
+zone/global gain. It preloads at most 153 keyframes (918 bytes), 15 track states
+(120 bytes), and 15 base colors (45 bytes) into reserved RAM. Normal envelope
+playback performs no EEPROM reads after track-table initialization. Complete
+patch state occupies 1,503 bytes of the audited 1,504-byte region. The device
+and installer reject larger envelope tables; other codecs do not use this cache.

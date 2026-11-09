@@ -8,7 +8,7 @@
 #define CUSTOM_LOOP 1u
 #define CUSTOM_END_OFF 2u
 #define CUSTOM_RGB ((volatile uint8_t *)0x10000552u)
-#define GAIN_SCALE 0xffffffffu
+#define GAIN_SCALE 0xfffe0001u
 
 extern volatile uint8_t runtime_owner_ram;
 void set_direct_mode(void);
@@ -36,8 +36,32 @@ typedef struct {
     volatile uint8_t decoding;
 } CustomState;
 
+typedef struct {
+    uint16_t first;
+    uint16_t key;
+    uint8_t zone;
+    uint8_t color_index;
+    uint8_t interpolation;
+    uint8_t count;
+} EnvelopeTrack;
+
+typedef struct {
+    uint32_t start_time;
+    uint32_t end_time;
+    uint16_t start_gain;
+    uint16_t end_gain;
+} EnvelopeInterval;
+
+#define ENVELOPE_KEYFRAME_MAX 153u
+#define ENVELOPE_PALETTE_MAX 15u
+
 __attribute__((section(".patch_state"))) CustomState custom_state;
-__attribute__((section(".patch_state"))) uint8_t custom_scratch[45];
+__attribute__((section(".patch_state"))) union {
+    uint8_t scratch[48];
+    uint8_t envelope_keyframes[ENVELOPE_KEYFRAME_MAX * 6];
+} custom_buffer;
+__attribute__((section(".patch_state"))) EnvelopeTrack envelope_tracks[15];
+__attribute__((section(".patch_state"))) uint8_t envelope_palette[ENVELOPE_PALETTE_MAX * 3];
 
 static uint32_t eeprom_read(uint32_t offset, void *destination, uint32_t length)
 {
@@ -189,6 +213,7 @@ static uint32_t decode_header_at(uint32_t address)
         return 0;
     if (custom_state.codec == 3 &&
         (!custom_state.frame_count || custom_state.frame_count > 15 || !custom_state.initial || !custom_state.palette_count ||
+         custom_state.palette_count > ENVELOPE_PALETTE_MAX || custom_state.timeline_count > ENVELOPE_KEYFRAME_MAX ||
          custom_state.frame_bytes != custom_state.frame_count * 6 ||
          custom_state.timeline_bytes != custom_state.timeline_count * 6))
         return 0;
@@ -199,6 +224,10 @@ static uint32_t palette_color(uint32_t index, uint8_t *output)
 {
     if (index >= custom_state.palette_count)
         return 0;
+    if (custom_state.codec == 3) {
+        copy_bytes(output, envelope_palette + index * 3, 3);
+        return 1;
+    }
     return eeprom_read(payload_address() + CUSTOM_HEADER_SIZE + index * 3, output, 3) == 0;
 }
 
@@ -377,21 +406,17 @@ static uint32_t envelope_gain(uint32_t start_time, uint32_t start_gain, uint32_t
         subtract = 1;
     }
     uint32_t high;
-    uint32_t low = multiply_16_by_32(magnitude, time - start_time, &high);
+    uint32_t elapsed = subtract ? end_time - time : time - start_time;
+    uint32_t low = multiply_16_by_32(magnitude, elapsed, &high);
     uint32_t adjustment = divide_48_by_32_round(high, low, end_time - start_time);
-    return subtract ? start_gain - adjustment : start_gain + adjustment;
+    return subtract ? end_gain + adjustment : start_gain + adjustment;
 }
 
-static uint32_t envelope_entry(uint8_t *output, uint32_t validate)
+static uint32_t envelope_validate(void)
 {
-    uint32_t time = custom_state.index * 34;
     uint32_t duration = custom_state.initial * 34;
     uint32_t key_offset = 0;
     uint32_t zone_mask = 0;
-    if (!validate) {
-        for (uint32_t zone = 0; zone < 45; zone++)
-            output[zone] = 0;
-    }
     for (uint32_t track = 0; track < custom_state.frame_count; track++) {
         uint8_t table[6];
         uint32_t table_address = payload_address() + CUSTOM_HEADER_SIZE + custom_state.palette_bytes + track * 6;
@@ -412,40 +437,85 @@ static uint32_t envelope_entry(uint8_t *output, uint32_t validate)
         if (eeprom_read(timeline_address() + key_offset * 6, current, 6) != 0)
             return 0;
         uint32_t previous_time = 0;
-        uint32_t found = 0;
         for (uint32_t key = 0; key < count; key++) {
             uint32_t start_time = load32(current);
-            uint32_t start_gain = load16(current + 4);
             if (start_time > duration || (key == 0 ? start_time != 0 : start_time <= previous_time))
                 return 0;
-            uint32_t end_time = start_time;
-            uint32_t end_gain = start_gain;
             if (key + 1 < count) {
                 if (eeprom_read(timeline_address() + (key_offset + key + 1) * 6, next, 6) != 0)
                     return 0;
-                end_time = load32(next);
-                end_gain = load16(next + 4);
+                uint32_t end_time = load32(next);
                 if (end_time <= start_time || end_time > duration)
                     return 0;
+                copy_bytes(current, next, 6);
             } else if (start_time != duration) {
                 return 0;
             }
-            if (!validate && !found && start_time <= time && time <= end_time) {
-                uint32_t gain = envelope_gain(start_time, start_gain, end_time, end_gain, time, interpolation);
-                uint8_t color[3];
-                if (!palette_color(color_index, color))
-                    return 0;
-                for (uint32_t channel = 0; channel < 3; channel++)
-                    output[zone * 3 + channel] = render_channel(color[channel], gain, custom_state.global_gain);
-                found = 1;
-            }
             previous_time = start_time;
-            if (key + 1 < count)
-                copy_bytes(current, next, 6);
         }
-        if (!validate && !found)
-            return 0;
         key_offset += count;
+    }
+    return key_offset == custom_state.timeline_count;
+}
+
+static void envelope_load_interval(EnvelopeTrack *track, EnvelopeInterval *interval)
+{
+    const uint8_t *current = custom_buffer.envelope_keyframes + (track->first + track->key) * 6;
+    interval->start_time = load32(current);
+    interval->start_gain = load16(current + 4);
+    interval->end_time = interval->start_time;
+    interval->end_gain = interval->start_gain;
+    if (track->key + 1 < track->count) {
+        const uint8_t *next = current + 6;
+        interval->end_time = load32(next);
+        interval->end_gain = load16(next + 4);
+    }
+}
+
+static uint32_t envelope_playback(uint8_t *output)
+{
+    uint32_t time = custom_state.index * 34;
+    uint32_t key_offset = 0;
+    uint32_t zone_mask = 0;
+    for (uint32_t zone = 0; zone < 45; zone++)
+        output[zone] = 0;
+    for (uint32_t index = 0; index < custom_state.frame_count; index++) {
+        EnvelopeTrack *track = &envelope_tracks[index];
+        if (track->key == 0xffff) {
+            uint8_t table[6];
+            uint32_t address = payload_address() + CUSTOM_HEADER_SIZE + custom_state.palette_bytes + index * 6;
+            if (eeprom_read(address, table, 6) != 0)
+                return 0;
+            track->zone = table[0];
+            track->color_index = table[1];
+            track->interpolation = table[2];
+            track->count = table[3];
+            track->first = load16(table + 4);
+            if (track->zone >= 15 || (zone_mask & (1u << track->zone)) ||
+                track->color_index >= custom_state.palette_count || track->interpolation > 1 ||
+                !track->count || track->first != key_offset)
+                return 0;
+            track->key = 0;
+        }
+        zone_mask |= 1u << track->zone;
+        EnvelopeInterval interval;
+        envelope_load_interval(track, &interval);
+        while (time > interval.end_time) {
+            if (track->key + 1 >= track->count)
+                return 0;
+            track->key++;
+            envelope_load_interval(track, &interval);
+        }
+        if (time < interval.start_time)
+            return 0;
+        uint32_t gain = envelope_gain(interval.start_time, interval.start_gain, interval.end_time,
+                                      interval.end_gain, time, track->interpolation);
+        uint8_t color[3];
+        if (!palette_color(track->color_index, color))
+            return 0;
+        for (uint32_t channel = 0; channel < 3; channel++)
+            output[track->zone * 3 + channel] = render_channel(color[channel], gain, custom_state.global_gain);
+        key_offset += track->count;
     }
     return key_offset == custom_state.timeline_count;
 }
@@ -453,7 +523,7 @@ static uint32_t envelope_entry(uint8_t *output, uint32_t validate)
 static uint32_t decode_entry(uint8_t *output, uint32_t validate)
 {
     if (custom_state.codec == 3) {
-        if (custom_state.index >= custom_state.initial || !envelope_entry(output, validate))
+        if (validate || custom_state.index >= custom_state.initial || !envelope_playback(output))
             return 0;
         custom_state.index++;
         return 1;
@@ -472,27 +542,43 @@ static void reset_playback(void)
     custom_state.index = 0;
     custom_state.delta_offset = 0;
     custom_state.remaining = 0;
+    for (uint32_t index = 0; index < 15; index++)
+        envelope_tracks[index].key = 0xffff;
 }
 
 static uint32_t validate_animation(void)
 {
     reset_playback();
     if (custom_state.codec == 3)
-        return envelope_entry(custom_scratch, 1);
+        return envelope_validate();
     if (custom_state.codec == 1) {
         uint32_t width = custom_state.palette_count ? (custom_state.palette_count <= 16 ? 4 : 8) : 0;
         uint32_t stride = width == 0 ? 45 : (width == 4 ? 8 : 15);
         for (uint32_t frame = 0; frame < custom_state.frame_count; frame++) {
             uint32_t address = payload_address() + CUSTOM_HEADER_SIZE + custom_state.palette_bytes + frame * stride;
-            if (!(width == 0 ? raw_frame(address, custom_scratch) : packed_frame(address, width, custom_scratch)))
+            if (!(width == 0 ? raw_frame(address, custom_buffer.scratch) : packed_frame(address, width, custom_buffer.scratch)))
                 return 0;
         }
     }
     for (uint32_t index = 0; index < custom_state.timeline_count; index++) {
-        if (!decode_entry(custom_scratch, 1))
+        if (!decode_entry(custom_buffer.scratch, 1))
             return 0;
     }
     return custom_state.codec != 2 || custom_state.delta_offset == custom_state.timeline_bytes;
+}
+
+static uint32_t prepare_envelope(void)
+{
+    if (custom_state.codec != 3)
+        return 1;
+    if (eeprom_read(payload_address() + CUSTOM_HEADER_SIZE, envelope_palette, custom_state.palette_bytes) != 0)
+        return 0;
+    for (uint32_t base = 0; base < custom_state.timeline_bytes; base += 48) {
+        uint32_t count = custom_state.timeline_bytes - base < 48 ? custom_state.timeline_bytes - base : 48;
+        if (eeprom_read(timeline_address() + base, custom_buffer.envelope_keyframes + base, count) != 0)
+            return 0;
+    }
+    return 1;
 }
 
 static uint32_t boot_bank(uint32_t bank, uint32_t generation)
@@ -500,7 +586,7 @@ static uint32_t boot_bank(uint32_t bank, uint32_t generation)
     custom_state.bank = bank;
     custom_state.generation = generation;
     custom_state.state = CUSTOM_STATE_EMPTY;
-    if (!decode_header_at(bank + CUSTOM_BANK_HEADER) || !validate_animation())
+    if (!decode_header_at(bank + CUSTOM_BANK_HEADER) || !validate_animation() || !prepare_envelope())
         return 0;
     custom_state.state = CUSTOM_STATE_VALID;
     reset_playback();
@@ -588,6 +674,8 @@ void custom_get_capabilities(uint8_t *packet)
     store16(packet + 27, 256);
     store16(packet + 29, 15);
     store32(packet + 31, 65535);
+    store16(packet + 35, ENVELOPE_KEYFRAME_MAX);
+    store16(packet + 37, ENVELOPE_PALETTE_MAX);
 }
 
 static void make_bank_header(uint8_t *header, uint32_t state, uint32_t generation, uint32_t total_size)
@@ -649,7 +737,8 @@ uint32_t custom_upload_data(uint8_t *packet, uint32_t length)
         custom_state.last_status = 2;
         return 2;
     }
-    if (eeprom_write(custom_state.bank + CUSTOM_BANK_HEADER + offset, packet + 5, count) != 0) {
+    copy_bytes(custom_buffer.scratch, packet + 5, count);
+    if (eeprom_write(custom_state.bank + CUSTOM_BANK_HEADER + offset, custom_buffer.scratch, count) != 0) {
         custom_state.last_status = 3;
         return 3;
     }
@@ -666,7 +755,7 @@ uint32_t custom_upload_commit(void)
         return 4;
     }
     runtime_owner_ram = 0;
-    if (!decode_header_at(custom_state.bank + CUSTOM_BANK_HEADER) || !validate_animation()) {
+    if (!decode_header_at(custom_state.bank + CUSTOM_BANK_HEADER) || !validate_animation() || !prepare_envelope()) {
         custom_state.last_status = 5;
         return 5;
     }

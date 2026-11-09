@@ -54,7 +54,66 @@ class CustomFirmwareTests(unittest.TestCase):
         self.assertEqual(response[4], 1)
         self.assertEqual(response[8], 1)
         self.assertEqual(response[21:25], bytes(4))
+        self.assertTrue(all(entry["command"][2] % 4 == 0 for entry in h.writes()))
         return response
+
+    def test_upload_data_initializes_length_argument(self):
+        from unicorn.arm_const import UC_ARM_REG_R1
+
+        def invalidate_length(uc, address, _size, _user_data):
+            if address == self.symbols["dispatch_set_hook"]:
+                uc.reg_write(UC_ARM_REG_R1, 0)
+
+        self.harness.uc.hook_add(unicorn.UC_HOOK_CODE, invalidate_length)
+        animation = optimize_animation_document(load_animation_document(EXAMPLE), timing="round")
+        self.upload(__import__("animation_brightness").encode_envelope(animation))
+
+    def test_large_envelope_uses_incremental_playback(self):
+        from animation_brightness import generate_firefly_document, load_track_model
+
+        document = generate_firefly_document(804, 5984, {"gold": "#ffd040", "lemon": "#fff080"}, [], 4, "0.8", 0.25, 0.9)
+        animation = optimize_animation_document(load_track_model(document))
+        self.assertEqual(len(animation.envelope["tracks"]), 14)
+        data = __import__("animation_brightness").encode_envelope(animation)
+        self.upload(data)
+        self.harness.call(self.symbols["boot_restore"])
+        frames, entries, _, _ = decode_animation(data)
+        maximum_lit = max(sum(any(frame[zone * 3:zone * 3 + 3]) for zone in range(15)) for frame in frames)
+        self.assertGreaterEqual(maximum_lit, 3)
+        self.assertLessEqual(maximum_lit, 4)
+        expected = [frames[entry.frame] for entry in entries for _ in range(entry.duration)]
+        for tick, frame in enumerate(expected):
+            self.harness.iap_commands.clear()
+            self.harness.call(self.symbols["custom_tick"])
+            reads = sum(item["code"] == 0x3E for item in self.harness.iap_commands)
+            self.assertLessEqual(reads, 14 if tick == 0 else 0)
+            self.assertEqual(self.harness.read(RGB, 45), frame, f"RGB mismatch at tick {tick}")
+        self.harness.call(self.symbols["custom_tick"])
+        self.assertEqual(self.harness.read(RGB, 45), frames[0])
+
+    def test_oversize_envelope_ram_requirements_fail_closed(self):
+        from types import SimpleNamespace
+        from animation_brightness import Track, encode_envelope
+
+        cases = []
+        keys = tuple([(time, 0) for time in range(153)] + [(170, 0)])
+        cases.append(SimpleNamespace(envelope={"duration_ticks": 5, "base_palette": [b"\xff\x00\x00"], "tracks": [Track(0, b"\xff\x00\x00", "hold", keys)], "global_gain": 65535}, loop=True, end="hold"))
+        palette = [b"\xff\x00\x00"] + [bytes([index, 0, 0]) for index in range(1, 16)]
+        cases.append(SimpleNamespace(envelope={"duration_ticks": 5, "base_palette": palette, "tracks": [Track(0, b"\xff\x00\x00", "hold", ((0, 0), (170, 0)))], "global_gain": 65535}, loop=True, end="hold"))
+        for case in cases:
+            with self.subTest(keyframes=len(case.envelope["tracks"][0].keyframes), colors=len(case.envelope["base_palette"])):
+                self.setUp()
+                data = encode_envelope(case)
+                h = self.harness
+                h.dispatch(bytearray([7, 0x26, 0, len(data) & 0xFF, len(data) >> 8, data[5]]) + bytes(58), max_instructions=2000000)
+                for offset in range(0, len(data), 48):
+                    packet = bytearray([7, 0x26, 1, offset & 0xFF, offset >> 8]) + data[offset:offset + 48]
+                    packet.extend(bytes(64 - len(packet)))
+                    h.dispatch(packet, max_instructions=2000000)
+                h.dispatch(bytearray([7, 0x26, 2]) + bytes(61), max_instructions=2000000)
+                response, _ = h.dispatch(bytearray([0x0E, 0x26]) + bytes(62))
+                self.assertEqual(response[8], 0)
+                self.assertEqual(int.from_bytes(response[21:25], "little"), 5)
 
     def test_envelope_upload_boot_and_playback(self):
         animation = optimize_animation_document(load_animation_document(EXAMPLE), timing="round")

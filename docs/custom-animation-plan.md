@@ -65,7 +65,9 @@ six-track fireflies document requires 296 bytes versus 1,226 bytes baked.
 These results justify taking the envelope candidate into the Phase B decoder
 review, not implementing it blindly in firmware.
 
-Phase B still needs an explicit decision on decoder stack/RAM cost, timing
-quantization, track-count bounds, and whether baked playback or envelope playback
-belongs on the device. Upper flash remains disabled. No hardware claim is made
-for fixed-point precision, physical adjacency, or power-loss persistence.
+Phases A–C are implemented: the firmware supports all five codecs, transactional
+EEPROM upload, and RAM-cached envelope playback with explicit resource limits.
+Phase D has targeted hardware results for installation, power-loss restoration,
+and responsive four-zone fireflies. Upper flash remains disabled. Physical
+adjacency, electrical timing, and every lifecycle path remain unproven; see
+`custom-animation-validation.md` for the current evidence boundary.
