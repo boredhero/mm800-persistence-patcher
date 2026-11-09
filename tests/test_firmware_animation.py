@@ -78,9 +78,9 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         stock = Path(STOCK).read_bytes()
         candidate = Path(CANDIDATE).read_bytes()
         assert hashlib.sha256(stock).hexdigest() == "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
-        assert hashlib.sha256(candidate).hexdigest() == "2f82c3b98075b1b7b07d7f742de9076958bef90f41a892f995d8adf42b68be81"
+        assert hashlib.sha256(candidate).hexdigest() == "1944de505e925a621c85bf722a59840d5ac4dad69334f9582dcd8b50334aa957"
         assert candidate[0x3F00:0x3F08] == b"MM8BUILD"
-        assert candidate[0x3F08:0x3F28].hex() == "33d453716bb265f47704aafc0e46ca87146a2cdc4d7683fa4f83c3112209db22"
+        assert candidate[0x3F08:0x3F28].hex() == "0dc571c137528cb62f1509a0ff29d472ad713fb290d090070bafb499044f9a93"
 
     def setUp(self):
         self.harness = FirmwareHarness(CANDIDATE)
@@ -504,6 +504,48 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         h.call(self.symbols["lighting_poll_guard"])
         self.assertEqual(h.read(RGB, 45), final_rgb)
         self.assertEqual((h.read(STATE, 1)[0], h.read(OWNER, 1)[0]), (2, 3))
+
+    def test_pending_manual_mode_controls_get22_and_save_without_pending_rgb(self):
+        h = self.harness
+        rgb = bytes([0x12, 0x34, 0x56]) * 15
+        h.dispatch(command(0x22, 0x0F, 0, *rgb))
+        self.assertEqual(h.read(self.symbols["pending_rgb"], 4), bytes(4))
+        h.dispatch(command(0x04, 2), pump=False)
+        response, _ = h.dispatch(bytearray([0x0E, 0x22]) + bytes(62), pump=False)
+        self.assertEqual(response[4:49], bytes(45))
+        h.dispatch(command(0x23), pump=False)
+        h.call(self.symbols["lighting_poll_guard"])
+        response, _ = h.dispatch(bytearray([0x0E, 0x23]) + bytes(62))
+        self.assertEqual(response[4], 1)
+        self.assertEqual(response[5:50], bytes(45))
+
+    def test_static_save_without_pending_rgb_preserves_current_color(self):
+        h = self.harness
+        rgb = bytes([0x65, 0x43, 0x21]) * 15
+        h.dispatch(command(0x22, 0x0F, 0, *rgb))
+        self.assertEqual(h.read(self.symbols["pending_rgb"], 4), bytes(4))
+        h.dispatch(command(0x23), pump=False)
+        response, _ = h.dispatch(bytearray([0x0E, 0x22]) + bytes(62), pump=False)
+        self.assertEqual(response[4:49], rgb)
+        h.call(self.symbols["lighting_poll_guard"])
+        response, _ = h.dispatch(bytearray([0x0E, 0x23]) + bytes(62))
+        self.assertEqual((response[4], response[5:50]), (1, rgb))
+
+    def test_coalescing_preserves_clear_and_save_side_effects(self):
+        h = self.harness
+        first = bytes([0x11, 0x22, 0x33]) * 15
+        final = bytes([0x44, 0x55, 0x66]) * 15
+        h.dispatch(command(0x04, 2), pump=False)
+        h.dispatch(command(0x22, 0x0F, 0, *first), pump=False)
+        h.dispatch(command(0x04, 1), pump=False)
+        h.dispatch(command(0x22, 0x0F, 0, *bytes([0x77, 0x88, 0x99]) * 15), pump=False)
+        h.dispatch(command(0x04, 2), pump=False)
+        h.dispatch(command(0x22, 0x0F, 0, *final), pump=False)
+        h.dispatch(command(0x23), pump=False)
+        h.call(self.symbols["lighting_poll_guard"])
+        self.assertEqual(h.read(RGB, 45), final)
+        response, _ = h.dispatch(bytearray([0x0E, 0x23]) + bytes(62))
+        self.assertEqual((response[4], response[5:50]), (1, final))
 
     def test_instruction_limit_is_not_success(self):
         h = self.harness

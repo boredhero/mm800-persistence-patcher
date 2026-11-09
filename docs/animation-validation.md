@@ -9,9 +9,9 @@ No device or EEPROM write is part of this validation.
 
 Candidate identities:
 
-- Application SHA-256: `2f82c3b98075b1b7b07d7f742de9076958bef90f41a892f995d8adf42b68be81`
-- Embedded build hash: `33d453716bb265f47704aafc0e46ca87146a2cdc4d7683fa4f83c3112209db22`
-- Full ISP SHA-256 using the preserved original backup: `fb600fe838c84eafa6a11cdd1e8f5329a934165210420a34ed9cb3bb2b2468f9`
+- Application SHA-256: `1944de505e925a621c85bf722a59840d5ac4dad69334f9582dcd8b50334aa957`
+- Embedded build hash: `0dc571c137528cb62f1509a0ff29d472ad713fb290d090070bafb499044f9a93`
+- Full ISP SHA-256 using the preserved original backup: `a35529885b744eaffba4c018cf6d0356364a7b8b33ca83bec20b17c1129d087f`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
 
 The full image preserves the original bootloader and installs the same candidate
@@ -20,9 +20,9 @@ hardware-tested release.
 
 ## Offline evidence
 
-The final patched binary passed 20 CPU test methods, including per-byte corrupted
-record, interrupt-interleaving, and overflow cases, plus 17 host-tool tests.
-Coverage includes:
+The final patched binary passed 23 CPU test methods, including per-byte corrupted
+record, interrupt-interleaving, overflow, and zero-sequence-sentinel cases, plus
+17 host-tool tests. Coverage includes:
 
 - Final SET/GET dispatch and capability discovery.
 - Identical preview/save parameters with only the persistence selector changed.
@@ -50,6 +50,8 @@ Coverage includes:
 - A 100-frame ckb-next-shaped RGB burst starting with the effect FIFO full, plus
   mode changes, proving the latest stock frame wins and saved animation remains
   committed. Separate bursts cover static-save and USB lifecycle ordering.
+- Mode→GET22 and mode→save with no pending RGB, static save without pending RGB,
+  and coalesced mode/RGB/save sequences that verify clear and save side effects.
 - Actual initial MSP `0x10000ac8`, packet address `0x1000041c`, and 372 bytes of
   linker-reserved patch RAM under a 384-byte assertion, including four effect/save
   FIFO slots and dedicated sequenced stock RGB/mode/lifecycle slots.

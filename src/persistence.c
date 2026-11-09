@@ -238,13 +238,14 @@ static void copy_logical_rgb(uint8_t *destination)
         source = 0;
         payload = pending_rgb.request.payload;
     }
-    if (pending_mode_sequence != 0 && sequence_before(newest, pending_mode_sequence)) {
+    if (pending_mode_sequence != 0 && (newest == 0 || sequence_before(newest, pending_mode_sequence))) {
         newest = pending_mode_sequence;
         source = pending_mode == REQUEST_HOST_STATIC ? 1 : 0xff;
     }
     for (uint32_t index = 0; index < request_count; index++) {
         const SequencedRequest *request = &request_queue[(request_head + index) % REQUEST_QUEUE_SIZE];
-        if (request->request.kind == REQUEST_STATIC_SAVE && sequence_before(newest, request->sequence)) {
+        if (request->request.kind == REQUEST_STATIC_SAVE &&
+            (newest == 0 || sequence_before(newest, request->sequence))) {
             newest = request->sequence;
             source = 0;
             payload = request->request.payload;
