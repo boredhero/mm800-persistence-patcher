@@ -70,13 +70,15 @@ See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 ## Supported device and firmware
 
 - USB: `1b1c:1b3b`
-- Application: `SageApp_v1.02.50.bin`
-- Length: 8,592 bytes
-- SHA-256: `5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa`
+- Stock application inside your full backup: `SageApp_v1.02.50.bin`
+- Application length: 8,592 bytes
+- Application SHA-256: `5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa`
 
-All other versions are rejected. No firmware is included in this repository.
-You must supply a full backup from your own MM800 and extract the stock
-application locally. See `SAFETY.md`.
+The recovery drive contains `firmware.bin`, not `SageApp_v1.02.50.bin`.
+The Sage file is only a section of the full backup and must match that exact
+hash. All other versions are rejected. No firmware is included in this
+repository. You must supply a full backup from your own MM800 and extract the
+stock application locally. See `SAFETY.md`.
 
 ## Features
 
@@ -98,14 +100,12 @@ Static RGB only: animation metadata is not currently saved. The renderer's
 - Linux `udisksctl`, `lsblk`, and `findmnt` for the ISP workflow
 - A user-supplied full backup from the exact supported MM800
 
-The supported update path is full ISP with a verified backup and readback.
-The normal application-only updater was not reliable during testing.
+The supported workflow is the pinhole full-backup and full-image write with
+verified readback.
 
 ## Easiest path: guided backup, build, and flash
 
-The normal application-only updater was not reliable during testing, so the
-supported workflow is full ISP with a verified backup and readback. The wizard
-handles it for you:
+The wizard handles the complete pinhole workflow for you:
 
 ```sh
 python3 mm800-persistence-patcher/tools/mm800_patch_and_flash.py
