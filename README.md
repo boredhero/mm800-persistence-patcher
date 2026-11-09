@@ -67,18 +67,17 @@ python3 tools/mm800_persistence_tool.py get-saved
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 `docs/backup-and-recovery.md` for the recovery procedure.
 
-## Supported device and firmware
+## Supported device and backup
 
-- USB: `1b1c:1b3b`
-- Stock application inside your full backup: `SageApp_v1.02.50.bin`
-- Application length: 8,592 bytes
-- Application SHA-256: `5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa`
+Use a Corsair MM800 RGB Polaris, USB `1b1c:1b3b`, with stock firmware 1.02.50.
+The wizard backs up `firmware.bin`, verifies it, patches it locally, and writes
+it back only after you approve. It also prints where your original backup is
+stored so you can restore it later.
 
-The recovery drive contains `firmware.bin`, not `SageApp_v1.02.50.bin`.
-The Sage file is only a section of the full backup and must match that exact
-hash. All other versions are rejected. No firmware is included in this
-repository. You must supply a full backup from your own MM800 and extract the
-stock application locally. See `SAFETY.md`.
+The original full backup and stock application are never included in this
+repository. Exact hashes and the stock-layout details are in
+`docs/verification.md` and `SAFETY.md`; you do not need to understand them to
+use the wizard.
 
 ## Features
 

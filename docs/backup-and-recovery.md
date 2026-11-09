@@ -13,6 +13,10 @@
 The app-only `SageApp_v1.02.50.bin` is not a full backup and must not be
 written at address zero.
 
+The verified original full backup has SHA-256
+`a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`.
+This identifies the maintainer's backup; your backup's hash may differ.
+
 ## Write or restore an image
 
 Use a fresh pinhole session and the guarded script:
