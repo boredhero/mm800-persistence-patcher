@@ -66,7 +66,7 @@ def main():
     run("llvm-objcopy", "-O", "binary", str(BUILD / "persistence.elf"), str(BUILD / "persistence.bin"))
 
     names = symbols(BUILD / "persistence.elf")
-    required = {"boot_restore", "dispatch_set_hook", "dispatch_get_hook", "save_current", "get_saved_response", "set_live_color", "usb_configured", "lighting_state_guard", "callback_zero_guard", "callback_two_guard", "lighting_poll_guard", "set_direct_mode"}
+    required = {"boot_restore", "dispatch_set_hook", "dispatch_get_hook", "save_current", "get_saved_response", "get_current_response", "get_profile_response", "set_effect_recipe", "set_stock_mode", "set_live_color", "usb_configured", "lighting_state_guard", "callback_zero_guard", "callback_two_guard", "lighting_poll_guard", "set_direct_mode"}
     assert required <= names.keys(), f"missing symbols: {required - names.keys()}"
     undefined = subprocess.check_output(["llvm-nm", "-u", str(BUILD / "persistence.elf")], text=True).strip()
     assert not undefined, f"undefined symbols: {undefined}"
@@ -106,7 +106,7 @@ def main():
     candidate.extend(b"MM8BUILD" + bytes(32) + struct.pack("<II", 0x0103, 0))
     embedded_hash = hashlib.sha256(candidate).digest()
     expected_hash = load_firmware_version()["embedded_build_hash"]
-    assert embedded_hash.hex() == expected_hash, "firmware build changed; update version.yml with a new release and hash"
+    assert embedded_hash.hex() == expected_hash, f"firmware build changed to {embedded_hash.hex()}; update version.yml with a new release and hash"
     candidate[0x2F08:0x2F28] = embedded_hash
     assert len(candidate) <= 0x7000, "candidate exceeds MM800 application slot"
 

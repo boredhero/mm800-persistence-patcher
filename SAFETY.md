@@ -52,9 +52,11 @@ without a separate safety review. Live RGB updates remain RAM-only. Saving a
 profile uses alternating A/B EEPROM records and must be verified byte-for-byte.
 Saving is aborted if either slot cannot be read.
 
-The current profile stores static RGB only. Animation metadata is outside the
-current save format. Stock brightness levels are separate: live levels 0–8 and
-persistent levels 0–3; these are integer driver levels, not percentages.
+Profiles store validated static RGB or one whitelisted animation recipe, never
+runtime pointers or rendered animation frames. V1 static records remain
+readable; unchanged V1-only firmware cannot restore newer V2 records. Stock
+brightness levels are separate: live levels 0–8 and persistent levels 0–3;
+these are integer driver levels, not percentages.
 
 See `docs/backup-and-recovery.md` and `docs/verification.md` for the exact
 procedures and remaining limitations.

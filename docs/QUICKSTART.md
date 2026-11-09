@@ -99,6 +99,20 @@ Use `brightness 2` without `--save` to change only the live level. Live levels
 are 0–8; persistent levels are 0–3. The `--save` form saves the level without
 changing the current brightness.
 
+Preview a device-run animation without writing EEPROM, or add `--save` to save
+and verify that exact recipe:
+
+```sh
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff
+python3 tools/mm800_persistence_tool.py effect rainbow
+python3 tools/mm800_persistence_tool.py effect moving-rainbow
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --save
+python3 tools/mm800_persistence_tool.py get-profile
+```
+
+Only validated speed code 1 is available. `capabilities` checks support, and
+`release` returns to stock animation without erasing the saved profile.
+
 Before the first save, back up EEPROM:
 
 ```sh

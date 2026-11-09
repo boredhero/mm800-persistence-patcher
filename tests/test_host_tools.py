@@ -94,6 +94,61 @@ class HidTests(unittest.TestCase):
                 self.assertEqual(locator.read_record()["failures"], 0)
 
 
+class EffectTests(unittest.TestCase):
+    def make_mm800(self):
+        mm800 = mm800_persistence_tool.MM800.__new__(mm800_persistence_tool.MM800)
+        mm800.fd = 1
+        mm800.timeout = 2
+        return mm800
+
+    def test_preview_and_save_differ_only_in_persistence_selector(self):
+        mm800 = self.make_mm800()
+        committed = {
+            "status": 2, "kind": 1, "effect": 0x10,
+            "payload": bytes([1, 0x80, 0, 0xFF]), "last_save_status": 0,
+        }
+        with mock.patch.object(mm800, "capabilities", return_value={"effect_ids": [0x10, 0x20, 0x30]}), \
+             mock.patch.object(mm800, "profile", return_value=committed) as profile, \
+             mock.patch("os.write", return_value=64) as write:
+            mm800.set_effect("breathing", "8000ff")
+            preview = write.call_args.args[1]
+            mm800.set_effect("breathing", "8000ff", persistent=True)
+            save = write.call_args.args[1]
+        self.assertEqual([index for index in range(64) if preview[index] != save[index]], [2])
+        self.assertEqual((preview[2], save[2]), (0, 0xF0))
+        self.assertEqual(preview[7:11], save[7:11])
+        profile.assert_called_once_with()
+
+    def test_save_rejects_mismatched_committed_recipe(self):
+        mm800 = self.make_mm800()
+        committed = {"status": 2, "kind": 1, "effect": 0x10, "payload": bytes([1, 0, 0, 0]), "last_save_status": 0}
+        with mock.patch.object(mm800, "capabilities", return_value={"effect_ids": [0x10]}), \
+             mock.patch.object(mm800, "profile", return_value=committed), \
+             mock.patch("os.write", return_value=64):
+            with self.assertRaises(RuntimeError):
+                mm800.set_effect("breathing", "8000ff", persistent=True)
+
+    def test_save_waits_for_busy_commit(self):
+        mm800 = self.make_mm800()
+        mm800.timeout = 1
+        busy = {"last_save_status": 0x80}
+        committed = {
+            "status": 2, "kind": 1, "effect": 0x10,
+            "payload": bytes([1, 0x80, 0, 0xFF]), "last_save_status": 0,
+        }
+        with mock.patch.object(mm800, "capabilities", return_value={"effect_ids": [0x10]}), \
+             mock.patch.object(mm800, "profile", side_effect=[busy, committed]) as profile, \
+             mock.patch("os.write", return_value=64), \
+             mock.patch("time.sleep") as sleep:
+            mm800.set_effect("breathing", "8000ff", persistent=True)
+        self.assertEqual(profile.call_count, 2)
+        sleep.assert_called_once_with(0.01)
+
+    def test_rainbow_rejects_color(self):
+        with self.assertRaises(ValueError):
+            mm800_persistence_tool.encode_effect("rainbow", "ffffff")
+
+
 class BrightnessTests(unittest.TestCase):
     def test_live_brightness_packet(self):
         mm800 = mm800_persistence_tool.MM800.__new__(mm800_persistence_tool.MM800)
