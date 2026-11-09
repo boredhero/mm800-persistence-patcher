@@ -30,12 +30,6 @@ Arch Linux or Manjaro:
 sudo pacman -Sy --needed clang lld llvm python udisks2 util-linux
 ```
 
-Check that everything is installed:
-
-```sh
-python3 tools/check_dependencies.py
-```
-
 ### 2. Clone the project and run the guided backup/build/flash workflow:
 
 ```sh
