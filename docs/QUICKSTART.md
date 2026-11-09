@@ -162,3 +162,48 @@ app-only image for this.
 - Building does not flash automatically, and saving a profile requires separate
   approval.
 - This is unofficial and experimental. There is no guarantee of recovery.
+
+## Copyable effect command examples
+
+Run these from the repository directory. Preview commands do not write EEPROM.
+Add `--save` to the exact command you want to keep after power loss, then use
+`get-profile` to verify the committed recipe.
+
+```sh
+# One-color breathing: speeds 1–2
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 1
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2
+
+# Two-color crossfade with holds: speeds 0–2
+python3 tools/mm800_persistence_tool.py effect crossfade ff0000 0000ff --speed 0
+python3 tools/mm800_persistence_tool.py effect crossfade ff0000 0000ff --speed 1
+python3 tools/mm800_persistence_tool.py effect crossfade ff0000 0000ff --speed 2
+
+# Two-color fade through a dark interval: speeds 1–2
+python3 tools/mm800_persistence_tool.py effect fade-dark ff0000 0000ff --speed 1
+python3 tools/mm800_persistence_tool.py effect fade-dark ff0000 0000ff --speed 2
+
+# Uniform rainbow: speeds 0–2
+python3 tools/mm800_persistence_tool.py effect rainbow --speed 0
+python3 tools/mm800_persistence_tool.py effect rainbow --speed 1
+python3 tools/mm800_persistence_tool.py effect rainbow --speed 2
+
+# Moving rainbow: speeds 0–2
+python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 0
+python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 1
+python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 2
+
+# Save and verify the currently selected effect parameters
+python3 tools/mm800_persistence_tool.py effect crossfade ff0000 0000ff --speed 2 --save
+python3 tools/mm800_persistence_tool.py get-profile
+
+# Static colors, brightness, and stock release
+python3 tools/mm800_persistence_tool.py set-rgb 00ff00
+python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
+python3 tools/mm800_persistence_tool.py brightness 2
+python3 tools/mm800_persistence_tool.py brightness 2 --save
+python3 tools/mm800_persistence_tool.py release
+```
+
+Breathing and fade-dark reject speed 0 because that stock preset is broken.
+Crossfade and both rainbow effects accept speed 0.
