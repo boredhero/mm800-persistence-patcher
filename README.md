@@ -69,7 +69,7 @@ See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 
 ## Supported device and backup
 
-Use a Corsair MM800 RGB Polaris, USB `1b1c:1b3b`, with stock firmware 1.02.50.
+Use a Corsair MM800 RGB Polaris, USB `1b1c:1b3b`, with stock firmware 1.02.50 (latest as of 11-08-2026).
 The wizard backs up `firmware.bin`, verifies it, patches it locally, and writes
 it back only after you approve. It also prints where your original backup is
 stored so you can restore it later.
