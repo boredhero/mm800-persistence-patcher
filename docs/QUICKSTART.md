@@ -79,6 +79,18 @@ python3 tools/mm800_persistence_tool.py get-saved
 `00ff00` is green. Try `0000ff` for blue or `ffffff` for white. Each zone can
 also have a different color. The tool auto-locates the MM800 control interface.
 
+Set brightness level 2 and make it persistent:
+
+```sh
+python3 tools/mm800_persistence_tool.py brightness 2 --save
+```
+
+Use `brightness 2` without `--save` to change only the live level. Live levels
+are 0–8; persistent levels are 0–3.
+
+The README includes a complete multicolor example with different RGB values in
+different zones.
+
 Before the first save, back up EEPROM:
 
 ```sh

@@ -79,6 +79,14 @@ class MM800:
         if self.current_rgb() != rgb:
             raise RuntimeError("live RGB readback does not match requested RGB")
 
+    def set_brightness(self, level, persistent=False):
+        if level < 0 or level > 8:
+            raise ValueError("brightness level must be 0–8")
+        if persistent and level > 3:
+            raise ValueError("persistent brightness level must be 0–3")
+        selector = 0xF0 if persistent else 0x00
+        self.send(bytearray([0x07, 0x05, 0x02, selector, level]) + bytes(PACKET_SIZE - 5))
+
     def save_current(self):
         intended = self.current_rgb()
         self.send(bytearray([0x07, 0x23]) + bytes(PACKET_SIZE - 2))
@@ -119,6 +127,9 @@ def main():
     subparsers.add_parser("chip-info")
     set_parser = subparsers.add_parser("set-rgb")
     set_parser.add_argument("rgb", type=parse_rgb, help="RRGGBB applied to all 15 zones; no EEPROM write")
+    brightness_parser = subparsers.add_parser("brightness")
+    brightness_parser.add_argument("level", type=int, help="brightness level 0–8, or 0–3 with --save")
+    brightness_parser.add_argument("--save", action="store_true", help="also make the level persistent")
     save_parser = subparsers.add_parser("save")
     save_parser.add_argument("--approve-eeprom-write", action="store_true", required=True)
     dump_parser = subparsers.add_parser("dump-eeprom")
@@ -152,6 +163,9 @@ def main():
         elif args.command == "set-rgb":
             mm800.set_rgb(args.rgb)
             print("live RGB verified; EEPROM unchanged")
+        elif args.command == "brightness":
+            mm800.set_brightness(args.level, args.save)
+            print(f"brightness level {args.level} set; persistent={args.save}")
         elif args.command == "save":
             mm800.save_current()
             print("saved RGB verified exactly; use a power cycle to test boot restore")

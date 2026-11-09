@@ -59,5 +59,28 @@ class HidTests(unittest.TestCase):
                 self.assertEqual(locator.read_record()["failures"], 0)
 
 
+class BrightnessTests(unittest.TestCase):
+    def test_live_brightness_packet(self):
+        mm800 = mm800_persistence_tool.MM800.__new__(mm800_persistence_tool.MM800)
+        mm800.fd = 1
+        with mock.patch("os.write", return_value=64) as write:
+            mm800.set_brightness(2)
+        packet = write.call_args.args[1]
+        self.assertEqual(packet[:5], bytes([0x07, 0x05, 0x02, 0x00, 0x02]))
+
+    def test_persistent_brightness_packet(self):
+        mm800 = mm800_persistence_tool.MM800.__new__(mm800_persistence_tool.MM800)
+        mm800.fd = 1
+        with mock.patch("os.write", return_value=64) as write:
+            mm800.set_brightness(2, persistent=True)
+        packet = write.call_args.args[1]
+        self.assertEqual(packet[:5], bytes([0x07, 0x05, 0x02, 0xF0, 0x02]))
+
+    def test_persistent_rejects_level_above_three(self):
+        mm800 = mm800_persistence_tool.MM800.__new__(mm800_persistence_tool.MM800)
+        with self.assertRaises(ValueError):
+            mm800.set_brightness(4, persistent=True)
+
+
 if __name__ == "__main__":
     unittest.main()

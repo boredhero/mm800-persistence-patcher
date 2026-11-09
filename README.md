@@ -58,6 +58,36 @@ python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
 python3 tools/mm800_persistence_tool.py get-saved
 ```
 
+Set live brightness level 2, or make it persistent:
+
+```sh
+python3 tools/mm800_persistence_tool.py brightness 2
+python3 tools/mm800_persistence_tool.py brightness 2 --save
+```
+
+Live levels are 0–8; persistent levels are 0–3. These are integer driver
+levels, not percentages.
+
+Example multicolor profile with different colors in different zones:
+
+```sh
+python3 - <<'PY'
+import sys
+sys.path.insert(0, "tools")
+from mm800_persistence_tool import MM800
+
+palette = [
+    "ff0000", "ff8000", "ffff00", "00ff00", "00ffff", "0000ff", "8000ff", "ffffff",
+    "ff0000", "ff8000", "ffff00", "00ff00", "00ffff", "0000ff", "8000ff",
+]
+rgb = b"".join(bytes.fromhex(color) for color in palette)
+with MM800("auto") as mm800:
+    mm800.set_rgb(rgb)
+    mm800.save_current()
+    print("multicolor profile saved")
+PY
+```
+
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 `docs/backup-and-recovery.md` for the recovery procedure.
 
