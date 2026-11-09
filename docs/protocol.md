@@ -48,11 +48,14 @@ SET25 uses a complete 64-byte report:
 | `7..` | canonical effect payload, then zero padding |
 
 Preview and save accept byte-for-byte identical effect parameters. Only byte 2
-changes. Validated requests enter a four-slot FIFO and are applied at the safe
-main-loop boundary, so a USB interrupt cannot change ownership or effect objects
-underneath an active animation poll. GET22 returns the latest logically queued
-RGB value even before that boundary. Queue-full requests are not reported as
-applied.
+changes. Validated requests are applied at the safe main-loop boundary, so a
+USB interrupt cannot change ownership or effect objects underneath an active
+animation poll. Effect/save requests use a four-slot FIFO. Ordinary stock RGB,
+mode, suspend, resume, and configure traffic instead uses dedicated sequenced
+slots: latest RGB and mode are coalesced without consuming that FIFO, and 32-bit
+sequence numbers preserve their ordering against saves, effects, and lifecycle
+events. GET22 returns the latest logically queued RGB value even before that
+boundary. Effect/save overflow fails rather than being reported as committed.
 
 Preview reconstructs the selected device-run effect without writing EEPROM.
 Save applies that same recipe, commits it, and requires readback. The host polls

@@ -52,9 +52,19 @@ typedef struct {
     uint8_t payload[RGB_SIZE];
 } Recipe;
 
+typedef struct {
+    uint32_t sequence;
+    Recipe request;
+} SequencedRequest;
+
 __attribute__((section(".patch_state"))) volatile uint8_t boot_status_ram[16];
 __attribute__((section(".patch_state"))) Recipe active_recipe;
-__attribute__((section(".patch_state"))) Recipe request_queue[REQUEST_QUEUE_SIZE];
+__attribute__((section(".patch_state"))) SequencedRequest request_queue[REQUEST_QUEUE_SIZE];
+__attribute__((section(".patch_state"))) SequencedRequest pending_rgb;
+__attribute__((section(".patch_state"))) volatile uint32_t pending_mode_sequence;
+__attribute__((section(".patch_state"))) volatile uint32_t lifecycle_sequence[3];
+__attribute__((section(".patch_state"))) volatile uint32_t next_sequence;
+__attribute__((section(".patch_state"))) volatile uint8_t pending_mode;
 __attribute__((section(".patch_state"))) volatile uint8_t request_head;
 __attribute__((section(".patch_state"))) volatile uint8_t request_count;
 __attribute__((section(".patch_state"))) volatile uint8_t runtime_owner_ram;
@@ -131,8 +141,27 @@ static void copy_bytes(uint8_t *destination, const uint8_t *source, uint32_t len
         destination[index] = source[index];
 }
 
+static uint32_t sequence_before(uint32_t candidate, uint32_t current)
+{
+    return candidate != 0 && (current == 0 || (int32_t)(candidate - current) < 0);
+}
+
+static uint32_t allocate_sequence(void)
+{
+    uint32_t primask;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    next_sequence++;
+    if (next_sequence == 0)
+        next_sequence = 1;
+    uint32_t sequence = next_sequence;
+    __asm volatile("msr primask, %0" : : "r"(primask));
+    return sequence;
+}
+
 static uint32_t queue_request(const Recipe *request)
 {
+    uint32_t sequence = allocate_sequence();
     uint32_t primask;
     uint32_t status = 0;
     __asm volatile("mrs %0, primask" : "=r"(primask));
@@ -141,7 +170,8 @@ static uint32_t queue_request(const Recipe *request)
         status = SAVE_QUEUE_FULL;
     } else {
         uint32_t tail = (request_head + request_count) % REQUEST_QUEUE_SIZE;
-        copy_bytes((uint8_t *)&request_queue[tail], (const uint8_t *)request, sizeof(Recipe));
+        request_queue[tail].sequence = sequence;
+        copy_bytes((uint8_t *)&request_queue[tail].request, (const uint8_t *)request, sizeof(Recipe));
         request_count++;
     }
     __asm volatile("msr primask, %0" : : "r"(primask));
@@ -151,38 +181,86 @@ static uint32_t queue_request(const Recipe *request)
 static uint32_t dequeue_request(Recipe *request)
 {
     uint32_t primask;
-    uint32_t found = 0;
+    uint32_t best = 0;
+    uint32_t source = 0xff;
     __asm volatile("mrs %0, primask" : "=r"(primask));
     __asm volatile("cpsid i");
     if (request_count != 0) {
-        copy_bytes((uint8_t *)request, (const uint8_t *)&request_queue[request_head], sizeof(Recipe));
+        best = request_queue[request_head].sequence;
+        source = 0;
+    }
+    if (sequence_before(pending_rgb.sequence, best)) {
+        best = pending_rgb.sequence;
+        source = 1;
+    }
+    if (sequence_before(pending_mode_sequence, best)) {
+        best = pending_mode_sequence;
+        source = 2;
+    }
+    for (uint32_t index = 0; index < 3; index++) {
+        if (sequence_before(lifecycle_sequence[index], best)) {
+            best = lifecycle_sequence[index];
+            source = 3 + index;
+        }
+    }
+    if (source == 0) {
+        copy_bytes((uint8_t *)request, (const uint8_t *)&request_queue[request_head].request, sizeof(Recipe));
         request_head = (request_head + 1) % REQUEST_QUEUE_SIZE;
         request_count--;
-        found = 1;
+    } else if (source == 1) {
+        copy_bytes((uint8_t *)request, (const uint8_t *)&pending_rgb.request, sizeof(Recipe));
+        pending_rgb.sequence = 0;
+    } else if (source != 0xff) {
+        for (uint32_t index = 0; index < sizeof(*request); index++)
+            ((uint8_t *)request)[index] = 0;
+        if (source == 2) {
+            request->kind = pending_mode;
+            pending_mode_sequence = 0;
+        } else {
+            request->kind = REQUEST_SUSPEND + source - 3;
+            lifecycle_sequence[source - 3] = 0;
+        }
     }
     __asm volatile("msr primask, %0" : : "r"(primask));
-    return found;
+    return source != 0xff;
 }
 
 static void copy_logical_rgb(uint8_t *destination)
 {
+    uint32_t newest = 0;
+    uint32_t source = 0xff;
+    const uint8_t *payload = 0;
     copy_bytes(destination, (const uint8_t *)RGB_BUFFER, RGB_SIZE);
     if ((*OWNER == OWNER_SAVED_STATIC || *OWNER == OWNER_HOST_STATIC) && active_recipe.kind == KIND_STATIC)
         copy_bytes(destination, active_recipe.payload, RGB_SIZE);
-    for (uint32_t index = 0; index < request_count; index++) {
-        const Recipe *request = &request_queue[(request_head + index) % REQUEST_QUEUE_SIZE];
-        if (request->kind == REQUEST_STATIC_PREVIEW || request->kind == REQUEST_STATIC_SAVE)
-            copy_bytes(destination, request->payload, RGB_SIZE);
-        if (request->kind == REQUEST_HOST_STATIC)
-            for (uint32_t channel = 0; channel < RGB_SIZE; channel++)
-                destination[channel] = 0;
+    if (pending_rgb.sequence != 0) {
+        newest = pending_rgb.sequence;
+        source = 0;
+        payload = pending_rgb.request.payload;
     }
+    if (pending_mode_sequence != 0 && sequence_before(newest, pending_mode_sequence)) {
+        newest = pending_mode_sequence;
+        source = pending_mode == REQUEST_HOST_STATIC ? 1 : 0xff;
+    }
+    for (uint32_t index = 0; index < request_count; index++) {
+        const SequencedRequest *request = &request_queue[(request_head + index) % REQUEST_QUEUE_SIZE];
+        if (request->request.kind == REQUEST_STATIC_SAVE && sequence_before(newest, request->sequence)) {
+            newest = request->sequence;
+            source = 0;
+            payload = request->request.payload;
+        }
+    }
+    if (source == 0)
+        copy_bytes(destination, payload, RGB_SIZE);
+    if (source == 1)
+        for (uint32_t channel = 0; channel < RGB_SIZE; channel++)
+            destination[channel] = 0;
 }
 
 static uint32_t save_pending(void)
 {
     for (uint32_t index = 0; index < request_count; index++) {
-        uint8_t kind = request_queue[(request_head + index) % REQUEST_QUEUE_SIZE].kind;
+        uint8_t kind = request_queue[(request_head + index) % REQUEST_QUEUE_SIZE].request.kind;
         if (kind == REQUEST_STATIC_SAVE || kind == REQUEST_EFFECT_SAVE)
             return 1;
     }
@@ -357,6 +435,11 @@ void boot_restore(void)
     *LAST_SAVE_STATUS = SAVE_NONE;
     request_head = 0;
     request_count = 0;
+    pending_rgb.sequence = 0;
+    pending_mode_sequence = 0;
+    next_sequence = 0;
+    for (uint32_t index = 0; index < 3; index++)
+        lifecycle_sequence[index] = 0;
     stock_light_init();
     uint32_t found = load_latest(record, &slot, &sequence, &read_errors, &unsupported);
     BOOT_STATUS[2] = (uint8_t)read_errors;
@@ -631,23 +714,26 @@ void get_eeprom_dump_response(uint8_t *packet)
 
 void get_iap_debug_response(uint8_t *packet)
 {
-    copy_bytes(packet + 4, (const uint8_t *)0x4f00u, 48);
+    copy_bytes(packet + 4, (const uint8_t *)0x5f00u, 48);
     for (uint32_t index = 52; index < 64; index++)
         packet[index] = 0;
 }
 
-static uint32_t queue_action(uint8_t kind)
+static uint32_t queue_lifecycle(uint8_t kind)
 {
-    Recipe request;
-    for (uint32_t index = 0; index < sizeof(request); index++)
-        ((uint8_t *)&request)[index] = 0;
-    request.kind = kind;
-    return queue_request(&request);
+    uint32_t sequence = allocate_sequence();
+    uint32_t primask;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    lifecycle_sequence[kind - REQUEST_SUSPEND] = sequence;
+    __asm volatile("msr primask, %0" : : "r"(primask));
+    return 0;
 }
 
 void set_live_color(uint8_t *data, uint32_t length)
 {
     Recipe request;
+    uint32_t primask;
     for (uint32_t index = 0; index < sizeof(request); index++)
         ((uint8_t *)&request)[index] = 0;
     request.kind = REQUEST_STATIC_PREVIEW;
@@ -656,19 +742,30 @@ void set_live_color(uint8_t *data, uint32_t length)
     if (length > RGB_SIZE)
         length = RGB_SIZE;
     copy_bytes(request.payload, data, length);
-    queue_request(&request);
+    uint32_t sequence = allocate_sequence();
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    copy_bytes((uint8_t *)&pending_rgb.request, (const uint8_t *)&request, sizeof(Recipe));
+    pending_rgb.sequence = sequence;
+    __asm volatile("msr primask, %0" : : "r"(primask));
 }
 
 void set_stock_mode(uint8_t *packet)
 {
-    queue_action(packet[2] == 1 ? REQUEST_STOCK : REQUEST_HOST_STATIC);
+    uint32_t sequence = allocate_sequence();
+    uint32_t primask;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    pending_mode = packet[2] == 1 ? REQUEST_STOCK : REQUEST_HOST_STATIC;
+    pending_mode_sequence = sequence;
+    __asm volatile("msr primask, %0" : : "r"(primask));
 }
 
 uint32_t usb_configured(uint32_t context)
 {
     *(volatile uint8_t *)0x10000208u = 0;
     if (*(volatile uint8_t *)(context + 0xed) != 0)
-        return queue_action(REQUEST_RESUME);
+        return queue_lifecycle(REQUEST_RESUME);
     return 0;
 }
 
@@ -687,13 +784,13 @@ uint32_t lighting_state_guard(uint32_t state)
 uint32_t callback_zero_guard(uint32_t context)
 {
     (void)context;
-    return queue_action(REQUEST_SUSPEND);
+    return queue_lifecycle(REQUEST_SUSPEND);
 }
 
 uint32_t callback_two_guard(uint32_t context)
 {
     (void)context;
-    return queue_action(REQUEST_CONFIGURE);
+    return queue_lifecycle(REQUEST_CONFIGURE);
 }
 
 uint32_t lighting_poll_guard(void)

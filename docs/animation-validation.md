@@ -9,9 +9,9 @@ No device or EEPROM write is part of this validation.
 
 Candidate identities:
 
-- Application SHA-256: `07f6f7794f85ee88987de446da217209331d299ef9b80648b72b424a9a2d3e2a`
-- Embedded build hash: `cbf2708b47654f3360f01bda87e62d0636d09e78e4e47890dea248b3a901f369`
-- Full ISP SHA-256 using the preserved original backup: `a200ec325da9e2f86403151717663192ba6a353d6112a8285ebe6190b399c15e`
+- Application SHA-256: `2f82c3b98075b1b7b07d7f742de9076958bef90f41a892f995d8adf42b68be81`
+- Embedded build hash: `33d453716bb265f47704aafc0e46ca87146a2cdc4d7683fa4f83c3112209db22`
+- Full ISP SHA-256 using the preserved original backup: `fb600fe838c84eafa6a11cdd1e8f5329a934165210420a34ed9cb3bb2b2468f9`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
 
 The full image preserves the original bootloader and installs the same candidate
@@ -20,8 +20,9 @@ hardware-tested release.
 
 ## Offline evidence
 
-The final patched binary passed 18 CPU test methods, including per-byte corrupted
-record and interrupt-interleaving cases, plus 17 host-tool tests. Coverage includes:
+The final patched binary passed 20 CPU test methods, including per-byte corrupted
+record, interrupt-interleaving, and overflow cases, plus 17 host-tool tests.
+Coverage includes:
 
 - Final SET/GET dispatch and capability discovery.
 - Identical preview/save parameters with only the persistence selector changed.
@@ -46,9 +47,12 @@ record and interrupt-interleaving cases, plus 17 host-tool tests. Coverage inclu
 - Preview B without save followed by reboot into saved A.
 - Suspend/resume, USB configure, deliberate host RGB takeover, and stock release.
 - Stock live/persistent brightness dispatch and active LED renderer calls.
-- Actual initial MSP `0x10000ac8`, packet address `0x1000041c`, and 265 bytes of
-  linker-reserved patch RAM under a 384-byte assertion, including four ordered
-  main-loop request slots.
+- A 100-frame ckb-next-shaped RGB burst starting with the effect FIFO full, plus
+  mode changes, proving the latest stock frame wins and saved animation remains
+  committed. Separate bursts cover static-save and USB lifecycle ordering.
+- Actual initial MSP `0x10000ac8`, packet address `0x1000041c`, and 372 bytes of
+  linker-reserved patch RAM under a 384-byte assertion, including four effect/save
+  FIFO slots and dedicated sequenced stock RGB/mode/lifecycle slots.
 
 Run the suite with explicit local artifact paths:
 
@@ -74,8 +78,10 @@ then test:
    software running.
 4. Static and animation behavior through reconnect, suspend/resume, deliberate
    host RGB takeover, and stock release.
-5. Rapid host takeover during active animations and repeated configured and
-   unconfigured USB callbacks.
+5. Actual ckb-next streaming and takeover from a saved animation, rapid host
+   takeover during active animations, and repeated configured/unconfigured USB
+   callbacks. The offline burst uses ckb-next's exact packet shape, not a
+   physical daemon-to-device run.
 6. Failed-save behavior and restoration of the original full backup.
 
 CPU emulation mocks IAP, USB, and LED-transfer peripherals. It does not establish

@@ -16,6 +16,7 @@ CANDIDATE = os.environ.get("MM800_CANDIDATE")
 PATCH_ELF = os.environ.get("MM800_PATCH_ELF")
 READY = bool(unicorn and STOCK and CANDIDATE and PATCH_ELF)
 if READY:
+    import firmware_harness
     from firmware_harness import (
         ACTIVE_RECIPE, COUNTER, ENGINE, OWNER, PACKET, PENDING_BRIGHTNESS,
         RGB, SAVE_STATUS, SELECTOR, STACK_TOP, STATE, TARGET_BRIGHTNESS,
@@ -77,9 +78,9 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         stock = Path(STOCK).read_bytes()
         candidate = Path(CANDIDATE).read_bytes()
         assert hashlib.sha256(stock).hexdigest() == "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
-        assert hashlib.sha256(candidate).hexdigest() == "07f6f7794f85ee88987de446da217209331d299ef9b80648b72b424a9a2d3e2a"
-        assert candidate[0x2F00:0x2F08] == b"MM8BUILD"
-        assert candidate[0x2F08:0x2F28].hex() == "cbf2708b47654f3360f01bda87e62d0636d09e78e4e47890dea248b3a901f369"
+        assert hashlib.sha256(candidate).hexdigest() == "2f82c3b98075b1b7b07d7f742de9076958bef90f41a892f995d8adf42b68be81"
+        assert candidate[0x3F00:0x3F08] == b"MM8BUILD"
+        assert candidate[0x3F08:0x3F28].hex() == "33d453716bb265f47704aafc0e46ca87146a2cdc4d7683fa4f83c3112209db22"
 
     def setUp(self):
         self.harness = FirmwareHarness(CANDIDATE)
@@ -423,6 +424,8 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         self.assertEqual(paused, [target])
         context = h.uc.context_save()
         pc = h.uc.reg_read(UC_ARM_REG_PC)
+        interrupted_sp = h.uc.reg_read(UC_ARM_REG_SP)
+        firmware_harness.STACK_TOP = interrupted_sp - 32
 
         rgb = bytes([0x12, 0x34, 0x56]) * 15
         h.dispatch(command(0x22, 0x0F, 0, *rgb), pump=False)
@@ -431,6 +434,7 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         h.uc.context_restore(context)
         h.uc.emu_start(pc | 1, RETURN_SENTINEL, count=250000)
         self.assertEqual(h.uc.reg_read(UC_ARM_REG_PC), RETURN_SENTINEL)
+        firmware_harness.STACK_TOP = STACK_TOP
         h.call(self.symbols["lighting_poll_guard"])
         self.assertEqual(h.read(RGB, 45), rgb)
         self.assertEqual(h.read(OWNER, 1)[0], 3)
@@ -452,6 +456,54 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         h.call(self.symbols["usb_configured"], (PACKET,))
         h.call(self.symbols["lighting_poll_guard"])
         self.assertEqual((h.read(STATE, 1)[0], h.read(TARGET_BRIGHTNESS, 1)[0]), (2, 3))
+
+    def test_ckb_next_rgb_stream_never_drops_latest_frame(self):
+        h = self.harness
+        h.dispatch(effect_packet(0x30, bytes([1, 0]), save=True))
+        for _ in range(4):
+            h.dispatch(effect_packet(0x20, bytes([1])), pump=False)
+        self.assertEqual(h.read(self.symbols["request_count"], 1)[0], 4)
+        final_rgb = None
+        for index in range(100):
+            final_rgb = bytes([index, (index * 3) & 0xFF, 255 - index]) * 15
+            h.dispatch(command(0x22, 0x0F, 0, *final_rgb), pump=False)
+            if index == 50:
+                h.dispatch(command(0x04, 2), pump=False)
+        self.assertEqual(h.read(self.symbols["request_count"], 1)[0], 4)
+        self.assertNotEqual(h.read(self.symbols["pending_rgb"], 4), bytes(4))
+        h.call(self.symbols["lighting_poll_guard"])
+        self.assertEqual(h.read(RGB, 45), final_rgb)
+        self.assertEqual(h.read(OWNER, 1)[0], 3)
+        self.assertEqual(h.read(self.symbols["request_count"], 1)[0], 0)
+        self.assertEqual(len(h.writes()), 1)
+        response, _ = h.dispatch(bytearray([0x0E, 0x25]) + bytes(62))
+        self.assertEqual((response[4], response[9]), (2, 0x30))
+
+    def test_stock_burst_preserves_save_and_lifecycle_order(self):
+        h = self.harness
+        saved_rgb = bytes([0x11, 0x22, 0x33]) * 15
+        final_rgb = bytes([0x44, 0x55, 0x66]) * 15
+        h.dispatch(command(0x22, 0x0F, 0, *saved_rgb), pump=False)
+        h.dispatch(command(0x23), pump=False)
+        h.dispatch(command(0x22, 0x0F, 0, *final_rgb), pump=False)
+        h.call(self.symbols["lighting_poll_guard"])
+        self.assertEqual(h.read(RGB, 45), final_rgb)
+        response, _ = h.dispatch(bytearray([0x0E, 0x23]) + bytes(62))
+        self.assertEqual((response[4], response[5:50]), (1, saved_rgb))
+
+        h.dispatch(effect_packet(0x30, bytes([1, 0]), save=True))
+        h.dispatch(command(0x04, 2), pump=False)
+        h.dispatch(command(0x22, 0x0F, 0, *saved_rgb), pump=False)
+        h.call(self.symbols["callback_zero_guard"], (PACKET,))
+        h.dispatch(command(0x22, 0x0F, 0, *final_rgb), pump=False)
+        h.write(PACKET + 0xED, b"\x00")
+        h.call(self.symbols["usb_configured"], (PACKET,))
+        h.dispatch(command(0x22, 0x0F, 0, *saved_rgb), pump=False)
+        h.call(self.symbols["callback_two_guard"], (PACKET,))
+        h.dispatch(command(0x22, 0x0F, 0, *final_rgb), pump=False)
+        h.call(self.symbols["lighting_poll_guard"])
+        self.assertEqual(h.read(RGB, 45), final_rgb)
+        self.assertEqual((h.read(STATE, 1)[0], h.read(OWNER, 1)[0]), (2, 3))
 
     def test_instruction_limit_is_not_success(self):
         h = self.harness

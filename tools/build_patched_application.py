@@ -101,13 +101,13 @@ def main():
     candidate[0x3AE4 - 0x2000:0x3AE8 - 0x2000] = struct.pack("<I", names["usb_configured"] | 1)
     candidate[0x2C84 - 0x2000:0x2C88 - 0x2000] = struct.pack("<I", 750)
     candidate[0x106:0x108] = struct.pack("<H", 0x0103)
-    assert len(candidate) <= 0x2F00, "code overlaps fixed build-info address"
-    candidate.extend(b"\xff" * (0x2F00 - len(candidate)))
+    assert len(candidate) <= 0x3F00, "code overlaps fixed build-info address"
+    candidate.extend(b"\xff" * (0x3F00 - len(candidate)))
     candidate.extend(b"MM8BUILD" + bytes(32) + struct.pack("<II", 0x0103, 0))
     embedded_hash = hashlib.sha256(candidate).digest()
     expected_hash = load_firmware_version()["embedded_build_hash"]
     assert embedded_hash.hex() == expected_hash, f"firmware build changed to {embedded_hash.hex()}; update version.yml with a new release and hash"
-    candidate[0x2F08:0x2F28] = embedded_hash
+    candidate[0x3F08:0x3F28] = embedded_hash
     assert len(candidate) <= 0x7000, "candidate exceeds MM800 application slot"
 
     output = BUILD / "SageApp_v1.02.50-eeprom-persistence.bin"

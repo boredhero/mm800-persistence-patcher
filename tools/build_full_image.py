@@ -8,7 +8,7 @@ BUILD = ROOT / "build"
 BACKUP = Path.cwd() / "mm800-full-backup-01.bin"
 APPLICATION = BUILD / "SageApp_v1.02.50-eeprom-persistence.bin"
 OUTPUT = BUILD / "MM800-full-eeprom-persistence-ISP.bin"
-EXPECTED_APPLICATION_HASH = "07f6f7794f85ee88987de446da217209331d299ef9b80648b72b424a9a2d3e2a"
+EXPECTED_APPLICATION_HASH = "2f82c3b98075b1b7b07d7f742de9076958bef90f41a892f995d8adf42b68be81"
 
 backup = BACKUP.read_bytes()
 application = APPLICATION.read_bytes()
