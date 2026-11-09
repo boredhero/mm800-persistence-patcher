@@ -78,9 +78,9 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         stock = Path(STOCK).read_bytes()
         candidate = Path(CANDIDATE).read_bytes()
         assert hashlib.sha256(stock).hexdigest() == "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
-        assert hashlib.sha256(candidate).hexdigest() == "d07ac4094736cdc7b24946e9dc01f7d97c3aeafa39a448b0ce71a78d1c209c26"
+        assert hashlib.sha256(candidate).hexdigest() == "ffd05cb3f1b58280a79801844d75e9334b48435b46bae468572e1330a88728c6"
         assert candidate[0x5F00:0x5F08] == b"MM8BUILD"
-        assert candidate[0x5F08:0x5F28].hex() == "645e9793f4a7459b65fc72b0f07d07cb14b0adcfc771c4334fd3764c0786a804"
+        assert candidate[0x5F08:0x5F28].hex() == "5b30348a8218754d290f69fa2b9382715e580deef74c695d0732847738775452"
 
     def setUp(self):
         self.harness = FirmwareHarness(CANDIDATE)

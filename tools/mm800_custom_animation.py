@@ -103,10 +103,11 @@ def main():
         return
 
     animation = load_and_optimize(args)
-    if args.budget <= 0:
+    budget = getattr(args, "budget", DEFAULT_BUDGET)
+    if budget <= 0:
         raise ValidationError("budget must be positive")
-    compilation = compile_brightness(animation, args.encoding, args.budget)
-    print_analysis(animation, compilation, args.budget, compilation.selected)
+    compilation = compile_brightness(animation, args.encoding, budget)
+    print_analysis(animation, compilation, budget, compilation.selected)
     if args.command == "compile":
         if args.output.exists():
             raise ValidationError(f"refusing to overwrite {args.output}")

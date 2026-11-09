@@ -517,6 +517,8 @@ uint32_t custom_boot(void)
     custom_state.index = 0;
     custom_state.delta_offset = 0;
     custom_state.remaining = 0;
+    custom_state.upload_offset = 0;
+    custom_state.last_status = 0;
     runtime_owner_ram = 0;
     custom_state.state = CUSTOM_STATE_EMPTY;
     custom_state.generation = 0;

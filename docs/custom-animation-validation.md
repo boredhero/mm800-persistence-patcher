@@ -2,9 +2,9 @@
 
 ## Candidate identity
 
-- Application SHA-256: `d07ac4094736cdc7b24946e9dc01f7d97c3aeafa39a448b0ce71a78d1c209c26`
-- Embedded build hash: `645e9793f4a7459b65fc72b0f07d07cb14b0adcfc771c4334fd3764c0786a804`
-- Full ISP SHA-256 using the preserved original backup: `3818f2a463749920824a9b7444449783ef8c20340c07c01c04cf0df8515620b6`
+- Application SHA-256: `ffd05cb3f1b58280a79801844d75e9334b48435b46bae468572e1330a88728c6`
+- Embedded build hash: `5b30348a8218754d290f69fa2b9382715e580deef74c695d0732847738775452`
+- Full ISP SHA-256 using the preserved original backup: `7c5a6ccd626002cb7a20bafa9e54714528cc3531fed5d01bb952e1569b9dfdde`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
 
 The candidate is preserved outside the repository at:
