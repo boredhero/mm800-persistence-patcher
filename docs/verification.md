@@ -48,7 +48,10 @@ only source and synthetic fixtures.
 
 - Stock application: `5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa`
 - Verified original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
-- Final full ISP image: `bf9fe9c2bf134c7369990dc20e01e7c5eaae617944fc1e27dc51dfdcd55827c0`
+- Earlier static-only hardware-tested full ISP image: `bf9fe9c2bf134c7369990dc20e01e7c5eaae617944fc1e27dc51dfdcd55827c0`
+
+For the newer animation candidate's offline-only hashes and test scope, see
+`animation-validation.md`. Do not apply the static hardware results to it.
 
 The full backup is 131,072 bytes. The stock application is only a section of
 it. The full ISP image preserves the original bootloader and places the patched

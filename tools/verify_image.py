@@ -55,10 +55,10 @@ def main():
     print(f"vendor=0x{vendor:04x} product=0x{product:04x} version=0x{version:04x}")
     assert (vendor, product) == (0x1B1C, 0x1B3B), "wrong device identity"
 
-    if len(data) >= 0x2F30 and data[0x2F00:0x2F08] == b"MM8BUILD":
-        embedded = data[0x2F08:0x2F28]
+    if len(data) >= 0x3F30 and data[0x3F00:0x3F08] == b"MM8BUILD":
+        embedded = data[0x3F08:0x3F28]
         verification = bytearray(data)
-        verification[0x2F08:0x2F28] = bytes(32)
+        verification[0x3F08:0x3F28] = bytes(32)
         computed = hashlib.sha256(verification).digest()
         print(f"embedded_build_hash={embedded.hex()}")
         print(f"computed_build_hash={computed.hex()}")

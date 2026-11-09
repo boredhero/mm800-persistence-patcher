@@ -30,7 +30,8 @@ attempts failed, so that method must not be used on this host.
 
 ## Remaining limitations
 
-- Static RGB only; animation persistence is not implemented.
+- These hardware results apply to the earlier static-only firmware. Animation
+  persistence has offline CPU-test coverage only and has not been hardware-tested.
 - Testing used one physical MM800 and a small number of power cycles.
 - USB ROM internals and worst-case interrupt/stack behavior are not fully
   modeled.

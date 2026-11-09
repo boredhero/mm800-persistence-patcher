@@ -7,8 +7,8 @@ or guarantee of recovery is provided. This project is not affiliated with or
 supported by Corsair.
 
 An MIT-licensed, source-only, local patcher and control tool for the Corsair
-MM800 RGB Polaris. It adds saved static per-zone RGB while preserving the stock
-brightness knob and the manufacturer's 75% renderer cap.
+MM800 RGB Polaris. It adds saved static per-zone RGB and device-run animations
+while preserving the stock brightness knob and manufacturer's 75% renderer cap.
 
 **You normally flash the firmware only once.** After that, the control script
 changes and saves colors and brightness without flashing. Reflash only when a
@@ -83,6 +83,32 @@ python3 tools/mm800_persistence_tool.py set-zones ffffff f2e5ff e6ccff d9b3ff cc
 python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
 ```
 
+Preview device-run animations without writing EEPROM:
+
+```sh
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2
+python3 tools/mm800_persistence_tool.py effect crossfade ff0000 0000ff --speed 0
+python3 tools/mm800_persistence_tool.py effect fade-dark ff0000 0000ff --speed 2
+python3 tools/mm800_persistence_tool.py effect rainbow --speed 0
+python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 2
+```
+
+Add `--save` to any of those exact commands to save the same recipe and verify
+its committed readback. For example:
+
+```sh
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2 --save
+python3 tools/mm800_persistence_tool.py get-profile
+```
+
+Breathing and fade-dark support speeds 1–2; crossfade and both rainbow effects
+support 0–2. Crossfade takes two colors and holds them during transitions;
+fade-dark takes two colors and fades through a dark interval. Broken speed 0 is
+rejected for breathing and fade-dark. Use `capabilities` to check support and
+`release` to return to stock animation without erasing the saved profile.
+Uploaded frame sequences are not supported.
+
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 `docs/backup-and-recovery.md` for the recovery procedure.
 
@@ -116,16 +142,20 @@ use the wizard.
 
 ## Features
 
-- Restore one static 15-zone RGB profile after power loss.
-- Independent color per zone; multicolor profiles are supported.
-- Alternating A/B records for interrupted-save recovery.
+- Restore one static 15-zone RGB profile or device-run animation after power loss.
+- Breathing, uniform rainbow, and moving rainbow at validated speed code 1.
+- Identical animation parameters for preview and verified persistent save.
+- Independent color per zone; multicolor static profiles are supported.
+- Alternating A/B records for interrupted-save recovery and V1 static migration.
 - Fail closed if either EEPROM slot cannot be read.
 - Read-only EEPROM diagnostic backup.
-- Stock live and persistent brightness levels remain separate from RGB.
+- Stock live and persistent brightness levels remain separate from RGB/effects.
 - Embedded build identity and structural verification.
 
-Static RGB only: animation metadata is not currently saved. The renderer's
-750/1000 cap is preserved.
+The renderer's 750/1000 cap is preserved. Uploaded frame sequences and arbitrary
+streamed-animation playback are not implemented. Animation persistence currently
+has offline CPU-test coverage; see `docs/animation-validation.md` before hardware
+validation.
 
 ## Requirements
 
