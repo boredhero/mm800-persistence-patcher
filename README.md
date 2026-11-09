@@ -239,6 +239,45 @@ python3 tools/mm800_persistence_tool.py chip-info
 An explicit `/dev/hidrawN` can replace auto discovery. The locator validates
 cached identity and invalidates it after repeated communication failures.
 
+## Custom JSON animations: offline compiler
+
+Phase A provides JSON validation, lossless optimization, four encoders, strict
+reference decoding, and measured size comparisons. It does not upload or change
+firmware.
+
+```sh
+python3 tools/mm800_custom_animation.py validate input.json --timing round
+python3 tools/mm800_custom_animation.py analyze input.json --timing round
+python3 tools/mm800_custom_animation.py compile input.json --timing round --output animation.bin
+python3 tools/mm800_custom_animation.py inspect animation.bin
+python3 tools/benchmark_custom_animation.py
+python3 tools/mm800_custom_animation.py fireflies --output fireflies.json --graph adjacency.json --seed 800
+```
+
+Default `exact` timing rejects durations that cannot be represented in 34 ms
+ticks. `--timing round` is an explicit conversion, never a silent one. Brightness
+uses 16-bit fixed-point gains with independent zone tracks; palette checks apply
+to base colors, and the stock global brightness knob is unchanged. See
+`docs/custom-animation-schema.md`, `custom-animation-format.md`,
+`custom-animation-benchmarks.md`, and `custom-animation-plan.md` for the format,
+results, and remaining firmware/storage work.
+
+## Install a custom animation
+
+Build the candidate firmware first, then install JSON animations without another
+firmware flash. The tool queries the actual device capacity before writing and
+verifies the committed bank and generation:
+
+```sh
+python3 tools/mm800_custom_animation.py device-storage
+python3 tools/mm800_custom_animation.py install input.json --timing round
+```
+
+The current payload budget is 1,728 bytes. Supported codecs are dictionary
+raw/palette, delta raw/palette, and brightness-envelope. See
+`docs/custom-animation-protocol.md` and `docs/custom-animation-validation.md`
+for protocol details and remaining hardware checks.
+
 ## Verification and support
 
 Read `docs/verification.md`, `docs/backup-and-recovery.md`, and

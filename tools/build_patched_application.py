@@ -58,15 +58,16 @@ def main():
         "-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-Wall", "-Wextra", "-Werror",
     ]
     run(*common, "-c", str(SOURCE / "persistence.c"), "-o", str(BUILD / "persistence.o"))
+    run(*common, "-c", str(SOURCE / "custom_animation.c"), "-o", str(BUILD / "custom_animation.o"))
     run("clang", "--target=armv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-c", str(SOURCE / "persistence_hooks.s"), "-o", str(BUILD / "hooks.o"))
     run(
         "ld.lld", "-T", str(SOURCE / "persistence.ld"), "--Map", str(BUILD / "persistence.map"),
-        "-o", str(BUILD / "persistence.elf"), str(BUILD / "persistence.o"), str(BUILD / "hooks.o"),
+        "-o", str(BUILD / "persistence.elf"), str(BUILD / "persistence.o"), str(BUILD / "custom_animation.o"), str(BUILD / "hooks.o"),
     )
     run("llvm-objcopy", "-O", "binary", str(BUILD / "persistence.elf"), str(BUILD / "persistence.bin"))
 
     names = symbols(BUILD / "persistence.elf")
-    required = {"boot_restore", "dispatch_set_hook", "dispatch_get_hook", "save_current", "get_saved_response", "get_current_response", "get_profile_response", "set_effect_recipe", "set_stock_mode", "set_live_color", "usb_configured", "lighting_state_guard", "callback_zero_guard", "callback_two_guard", "lighting_poll_guard", "set_direct_mode"}
+    required = {"boot_restore", "dispatch_set_hook", "dispatch_get_hook", "save_current", "get_saved_response", "get_current_response", "get_profile_response", "set_effect_recipe", "set_stock_mode", "set_live_color", "usb_configured", "lighting_state_guard", "callback_zero_guard", "callback_two_guard", "lighting_poll_guard", "set_direct_mode", "custom_boot", "custom_tick", "custom_get_capabilities", "custom_upload_begin", "custom_upload_data", "custom_upload_commit", "custom_upload_abort"}
     assert required <= names.keys(), f"missing symbols: {required - names.keys()}"
     undefined = subprocess.check_output(["llvm-nm", "-u", str(BUILD / "persistence.elf")], text=True).strip()
     assert not undefined, f"undefined symbols: {undefined}"
@@ -101,13 +102,13 @@ def main():
     candidate[0x3AE4 - 0x2000:0x3AE8 - 0x2000] = struct.pack("<I", names["usb_configured"] | 1)
     candidate[0x2C84 - 0x2000:0x2C88 - 0x2000] = struct.pack("<I", 750)
     candidate[0x106:0x108] = struct.pack("<H", 0x0103)
-    assert len(candidate) <= 0x3F00, "code overlaps fixed build-info address"
-    candidate.extend(b"\xff" * (0x3F00 - len(candidate)))
+    assert len(candidate) <= 0x5F00, "code overlaps fixed build-info address"
+    candidate.extend(b"\xff" * (0x5F00 - len(candidate)))
     candidate.extend(b"MM8BUILD" + bytes(32) + struct.pack("<II", 0x0103, 0))
     embedded_hash = hashlib.sha256(candidate).digest()
     expected_hash = load_firmware_version()["embedded_build_hash"]
     assert embedded_hash.hex() == expected_hash, f"firmware build changed to {embedded_hash.hex()}; update version.yml with a new release and hash"
-    candidate[0x3F08:0x3F28] = embedded_hash
+    candidate[0x5F08:0x5F28] = embedded_hash
     assert len(candidate) <= 0x7000, "candidate exceeds MM800 application slot"
 
     output = BUILD / "SageApp_v1.02.50-eeprom-persistence.bin"
