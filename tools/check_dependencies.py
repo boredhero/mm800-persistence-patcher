@@ -32,21 +32,23 @@ def distro_family():
     return "debian"
 
 
+def require_dependencies():
+    missing = [command for command in REQUIRED if not shutil.which(command)]
+    if missing:
+        family = distro_family()
+        raise RuntimeError(
+            f"missing required programs: {', '.join(missing)}\n"
+            f"Install them with: {INSTALL[family]}"
+        )
+
+
 def main():
     print("Checking required commands:\n")
-    missing = []
     for command in REQUIRED:
         present = shutil.which(command)
         print(f"{command:16} {present or 'MISSING'}")
-        if not present:
-            missing.append(command)
-    if not missing:
-        print("\nAll required commands are available.")
-        return
-    family = distro_family()
-    print(f"\nMissing: {', '.join(missing)}")
-    print(f"Suggested install command for this system ({family}):\n{INSTALL[family]}")
-    print("\nReview that command with your administrator before running it.")
+    require_dependencies()
+    print("\nAll required commands are available.")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,9 @@ python3 tools/check_dependencies.py
 ```
 
 It lists available and missing commands and prints a suggested install command
-for your distribution. It does not install anything or change the system.
+for your distribution. The wizard and restore tool run this check automatically
+and stop before writing if anything is missing. It does not install anything or
+change the system.
 
 ## Debian and Ubuntu
 

@@ -44,9 +44,11 @@ cd mm800-persistence-patcher
 python3 tools/mm800_patch_and_flash.py --output-dir ../mm800-work
 ```
 
-The wizard will tell you when to unplug, hold the pinhole, and reconnect. It
-prints the exact backup paths before asking you to type `FLASH`. It then
-requires an exact readback match and checks the embedded build record.
+The wizard checks for required programs automatically and stops with an install
+command if anything is missing. It will tell you when to unplug, hold the
+pinhole, and reconnect. It prints the exact backup paths before asking you to
+type `FLASH`. It then requires an exact readback match and checks the embedded
+build record.
 
 Restore the original stock backup if needed:
 

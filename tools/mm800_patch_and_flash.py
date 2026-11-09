@@ -6,6 +6,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from check_dependencies import require_dependencies
+
 ROOT = Path(__file__).resolve().parents[1]
 STOCK_SHA256 = "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
 FULL_SIZE = 131072
@@ -78,6 +80,7 @@ def main():
         help="new directory for backups and generated images (must not already exist)",
     )
     args = parser.parse_args()
+    require_dependencies()
     workdir = Path(args.output_dir).resolve()
     if workdir.exists():
         raise RuntimeError(f"refusing to reuse or overwrite {workdir}; choose a new directory")

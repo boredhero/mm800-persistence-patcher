@@ -23,8 +23,9 @@ sudo pacman -Sy --needed clang lld llvm python udisks2 util-linux
 ```
 
 These packages provide Python 3, Clang/lld, `llvm-objcopy`, `udisksctl`,
-`lsblk`, and `findmnt`. You can also run
-`python3 tools/check_dependencies.py` to check what is missing.
+`lsblk`, and `findmnt`. The wizard and restore tool check for missing programs
+automatically and stop with an install command if anything is missing. You can
+also run `python3 tools/check_dependencies.py` yourself.
 
 You also need the MM800 and its underside pinhole button.
 
