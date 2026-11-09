@@ -40,5 +40,23 @@ sudo dnf install clang lld llvm python3 udisks2 util-linux
 sudo pacman -S --needed clang lld llvm python udisks2 util-linux
 ```
 
+## Other common distributions
+
+- Linux Mint, Pop!_OS, and Zorin OS use the Ubuntu/Debian `apt` commands.
+- EndeavourOS and Garuda use the Arch `pacman --needed` commands.
+- Nobara uses the Fedora `dnf` commands.
+- openSUSE uses:
+
+  ```sh
+  sudo zypper install clang lld llvm python3 udisks2 util-linux
+  ```
+
+## SteamOS and other immutable systems
+
+Do not install packages directly on SteamOS or Bazzite. Use an Ubuntu
+Distrobox container and run the Ubuntu `apt` commands inside that container.
+Avoid changing the host's read-only system image or using `steamos-readonly`
+just to run this tool.
+
 Review package names with your administrator before installation. No script in
 this repository silently installs packages or uses sudo automatically.
