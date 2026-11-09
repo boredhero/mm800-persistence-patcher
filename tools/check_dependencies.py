@@ -16,7 +16,7 @@ REQUIRED = [
 INSTALL = {
     "debian": "sudo apt update && sudo apt install clang lld llvm python3 udisks2 util-linux",
     "fedora": "sudo dnf install clang lld llvm python3 udisks2 util-linux",
-    "arch": "sudo pacman -S --needed clang lld llvm python udisks2 util-linux",
+    "arch": "sudo pacman -Sy --needed clang lld llvm python udisks2 util-linux",
 }
 
 
