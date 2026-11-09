@@ -75,13 +75,11 @@ Live levels are 0–8; persistent levels are 0–3. These are integer driver
 levels, not percentages.
 
 Set a multicolor profile by entering one six-digit RGB color for each of the 15
-zones, in order. This example sets live colors and then saves them:
+zones, in order. This white-to-deep-purple gradient sets live colors and then
+saves them:
 
 ```sh
-python3 tools/mm800_persistence_tool.py set-zones \
-  ff0000 ff8000 ffff00 00ff00 00ffff \
-  0000ff 8000ff ffffff ff0000 ff8000 \
-  ffff00 00ff00 00ffff 0000ff 8000ff
+python3 tools/mm800_persistence_tool.py set-zones ffffff f2e5ff e6ccff d9b3ff cc99ff bf80ff b366ff a64dff 9933ff 8c1aff 8000ff 6d00db 5a00b8 470094 180068
 python3 tools/mm800_persistence_tool.py save --approve-eeprom-write
 ```
 
