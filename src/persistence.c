@@ -296,7 +296,9 @@ static uint32_t recipe_valid(uint8_t kind, uint8_t effect, uint8_t length, uint8
         return 0;
     if (kind == KIND_STATIC)
         return effect == 0 && length == RGB_SIZE;
-    if (kind != KIND_ANIMATION || length != effect_length(effect) || payload[0] != SPEED_CODE)
+    if (kind != KIND_ANIMATION || length != effect_length(effect) || payload[0] > 2)
+        return 0;
+    if (effect == EFFECT_BREATHING && payload[0] == 0)
         return 0;
     return effect != EFFECT_MOVING_RAINBOW || payload[1] == 0;
 }
@@ -388,7 +390,7 @@ static void apply_active_animation(uint8_t owner)
     uint32_t engine;
     for (uint32_t index = 0; index < 11; index++)
         config[index] = 0;
-    config[2] = SPEED_CODE;
+    config[2] = active_recipe.payload[0];
     config[6] = 255;
     config[10] = 255;
     if (active_recipe.effect == EFFECT_BREATHING) {
@@ -652,7 +654,7 @@ void get_profile_response(uint8_t *packet)
     packet[58] = EFFECT_BREATHING;
     packet[59] = EFFECT_RAINBOW;
     packet[60] = EFFECT_MOVING_RAINBOW;
-    packet[61] = SPEED_CODE;
+    packet[61] = 0x07;
 }
 
 static void get_chip_info_response(uint8_t *packet)

@@ -104,14 +104,15 @@ and verify that exact recipe:
 
 ```sh
 python3 tools/mm800_persistence_tool.py effect breathing 8000ff
-python3 tools/mm800_persistence_tool.py effect rainbow
-python3 tools/mm800_persistence_tool.py effect moving-rainbow
-python3 tools/mm800_persistence_tool.py effect breathing 8000ff --save
+python3 tools/mm800_persistence_tool.py effect rainbow --speed 0
+python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 2
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2 --save
 python3 tools/mm800_persistence_tool.py get-profile
 ```
 
-Only validated speed code 1 is available. `capabilities` checks support, and
-`release` returns to stock animation without erasing the saved profile.
+Breathing supports speeds 1–2; both rainbow effects support 0–2. Broken
+fast-breathing speed 0 is rejected. `capabilities` checks support, and `release`
+returns to stock animation without erasing the saved profile.
 
 Before the first save, back up EEPROM:
 

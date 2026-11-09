@@ -9,9 +9,9 @@ No device or EEPROM write is part of this validation.
 
 Candidate identities:
 
-- Application SHA-256: `1944de505e925a621c85bf722a59840d5ac4dad69334f9582dcd8b50334aa957`
-- Embedded build hash: `0dc571c137528cb62f1509a0ff29d472ad713fb290d090070bafb499044f9a93`
-- Full ISP SHA-256 using the preserved original backup: `a35529885b744eaffba4c018cf6d0356364a7b8b33ca83bec20b17c1129d087f`
+- Application SHA-256: `f6b151f467094f5befc4bbf9d1ebfefba21f02d1452af97e853f25bf5ddfd7cd`
+- Embedded build hash: `d07e6783a84b5bac6a2600c490912eab9607268cc85b9ac4685a2170ae5d0a0d`
+- Full ISP SHA-256 using the preserved original backup: `acf8b09165575626b1836c2c463f21f91e1aeeaac66f74b59baf1da9407f6004`
 - Original full backup: `a7dcb5367383c18d6d3df6afaeff282e77aacaf47cd6fbb9193e080c83919aae`
 
 The full image preserves the original bootloader and installs the same candidate
@@ -21,8 +21,8 @@ hardware-tested release.
 ## Offline evidence
 
 The final patched binary passed 23 CPU test methods, including per-byte corrupted
-record, interrupt-interleaving, overflow, and zero-sequence-sentinel cases, plus
-17 host-tool tests. Coverage includes:
+record, interrupt-interleaving, overflow, zero-sequence-sentinel, and all eight
+valid effect/speed combinations, plus 18 host-tool tests. Coverage includes:
 
 - Final SET/GET dispatch and capability discovery.
 - Identical preview/save parameters with only the persistence selector changed.
@@ -35,8 +35,10 @@ record, interrupt-interleaving, overflow, and zero-sequence-sentinel cases, plus
   stock `context+0xed` condition and suspended brightness/state.
 - Exact REA-derived representative frames and intended cycle behavior for all
   three presets; frozen output cannot satisfy these assertions.
-- Moving-rainbow rollover at its exact 87-tick output boundary, including a
-  counter seeded near the former 32-bit multiplication overflow.
+- Breathing speeds 1–2 and both rainbow effects at speeds 0–2, with exact
+  constructor period/velocity checks. Broken breathing speed 0 remains rejected.
+- Moving-rainbow rollover at its exact 87-tick output boundary for every speed,
+  including counters seeded near the former 32-bit multiplication overflow.
 - Deliberate instruction-limit exhaustion, which must fail rather than pass as a
   successful emulated return.
 - V1 static compatibility, V1-to-V2 explicit-save migration, mixed versions,

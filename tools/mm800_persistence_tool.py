@@ -103,8 +103,8 @@ class MM800:
         profile = self.profile()
         if profile["capabilities"] & 0x07 != 0x07:
             raise RuntimeError("installed firmware lacks the versioned static/animation preview/save capability")
-        if profile["speed"] != 1:
-            raise RuntimeError("installed firmware does not advertise validated speed code 1")
+        if profile["speed"] & 0x07 != 0x07:
+            raise RuntimeError("installed firmware does not advertise the complete validated speed range 0–2")
         return profile
 
     def wait_for_save(self):
@@ -124,8 +124,8 @@ class MM800:
         if self.current_rgb() != rgb:
             raise RuntimeError("live RGB readback does not match requested RGB")
 
-    def set_effect(self, effect, color=None, persistent=False):
-        effect_id, payload = encode_effect(effect, color)
+    def set_effect(self, effect, color=None, persistent=False, speed=1):
+        effect_id, payload = encode_effect(effect, color, speed)
         capabilities = self.capabilities()
         if effect_id not in capabilities["effect_ids"]:
             raise RuntimeError(f"installed firmware does not support effect {effect}")
@@ -189,17 +189,21 @@ def parse_rgb(text):
     return parse_zone_rgb(text) * 15
 
 
-def encode_effect(effect, color=None):
+def encode_effect(effect, color=None, speed=1):
+    if speed not in (0, 1, 2):
+        raise ValueError("speed must be 0, 1, or 2")
     if effect == "breathing":
         if color is None:
             raise ValueError("breathing requires one RRGGBB color")
+        if speed == 0:
+            raise ValueError("breathing speed 0 is broken and unsupported; use speed 1 or 2")
         if isinstance(color, str):
             color = parse_zone_rgb(color)
-        payload = bytes([1]) + bytes(color)
+        payload = bytes([speed]) + bytes(color)
     else:
         if color is not None:
             raise ValueError(f"{effect} does not accept a color")
-        payload = bytes([1, 0]) if effect == "moving-rainbow" else bytes([1])
+        payload = bytes([speed, 0]) if effect == "moving-rainbow" else bytes([speed])
     return EFFECT_IDS[effect], payload
 
 
@@ -262,6 +266,7 @@ def main():
     effect_parser = subparsers.add_parser("effect", help="preview a device-run animation, or save it with --save")
     effect_parser.add_argument("effect", choices=tuple(EFFECT_IDS))
     effect_parser.add_argument("color", nargs="?", help="RRGGBB for breathing; rainbow effects take no color")
+    effect_parser.add_argument("--speed", type=int, choices=(0, 1, 2), default=1, help="speed 1–2 for breathing, 0–2 for rainbow effects")
     effect_parser.add_argument("--save", action="store_true", help="explicitly write and verify this exact recipe in EEPROM")
     brightness_parser = subparsers.add_parser("brightness")
     brightness_parser.add_argument("level", type=int, help="brightness level 0–8, or 0–3 with --save")
@@ -316,8 +321,8 @@ def main():
             mm800.set_rgb(b"".join(args.zones))
             print("live 15-zone RGB verified; EEPROM unchanged")
         elif args.command == "effect":
-            mm800.set_effect(args.effect, args.color, args.save)
-            print(f"{args.effect} saved recipe verified exactly" if args.save else f"{args.effect} preview active; EEPROM unchanged")
+            mm800.set_effect(args.effect, args.color, args.save, args.speed)
+            print(f"{args.effect} speed {args.speed} saved recipe verified exactly" if args.save else f"{args.effect} speed {args.speed} preview active; EEPROM unchanged")
         elif args.command == "release":
             mm800.release_stock()
             print("stock animation active; saved EEPROM profile unchanged")

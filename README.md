@@ -87,21 +87,23 @@ Preview device-run animations without writing EEPROM:
 
 ```sh
 python3 tools/mm800_persistence_tool.py effect breathing 8000ff
-python3 tools/mm800_persistence_tool.py effect rainbow
-python3 tools/mm800_persistence_tool.py effect moving-rainbow
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2
+python3 tools/mm800_persistence_tool.py effect rainbow --speed 0
+python3 tools/mm800_persistence_tool.py effect moving-rainbow --speed 2
 ```
 
 Add `--save` to any of those exact commands to save the same recipe and verify
 its committed readback. For example:
 
 ```sh
-python3 tools/mm800_persistence_tool.py effect breathing 8000ff --save
+python3 tools/mm800_persistence_tool.py effect breathing 8000ff --speed 2 --save
 python3 tools/mm800_persistence_tool.py get-profile
 ```
 
-Use `capabilities` to check animation support and `release` to return to stock
-animation without erasing the saved profile. Effects use validated speed code 1;
-the broken fast-breathing preset and uploaded frame sequences are not supported.
+Breathing supports speeds 1–2; both rainbow effects support 0–2. The broken
+fast-breathing speed 0 preset is rejected. Use `capabilities` to check support
+and `release` to return to stock animation without erasing the saved profile.
+Uploaded frame sequences are not supported.
 
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 `docs/backup-and-recovery.md` for the recovery procedure.

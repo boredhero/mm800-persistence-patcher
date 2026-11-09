@@ -27,7 +27,7 @@ saved-profile query. Fields after byte 4 are:
 - `57`: last save status; `0x7f` means no save attempted, `0x80` means queued
   or committing (`BUSY`), 0 means verified, and other values are failures.
 - `58..60`: supported public effect IDs `10 20 30`.
-- `61`: supported speed code 1.
+- `61`: speed bitmask `0x07`; codes 0–2 exist, with per-effect restrictions below.
 - `62..63`: reserved zero.
 
 `capabilities` fails closed if this versioned interface is absent. `get-profile`
@@ -68,9 +68,9 @@ IDs:
 
 | Public ID | CLI name | Payload | Behavior |
 |---|---|---|---|
-| `0x10` | `breathing` | `01 R G B` | One-color breathing, speed code 1 |
-| `0x20` | `rainbow` | `01` | Uniform rainbow, speed code 1 |
-| `0x30` | `moving-rainbow` | `01 00` | Moving rainbow, speed code 1, stock direction 0 |
+| `0x10` | `breathing` | `01 R G B` or `02 R G B` | One-color breathing, speed 1 or 2 |
+| `0x20` | `rainbow` | `00`, `01`, or `02` | Uniform rainbow, speed 0–2 |
+| `0x30` | `moving-rainbow` | `00 00`, `01 00`, or `02 00` | Moving rainbow, speed 0–2, stock direction 0 |
 
 All other IDs, lengths, flags, speeds, directions, protocol versions, and nonzero
 padding are rejected before effect RAM changes. The broken fast-breathing speed

@@ -144,6 +144,19 @@ class EffectTests(unittest.TestCase):
         self.assertEqual(profile.call_count, 2)
         sleep.assert_called_once_with(0.01)
 
+    def test_all_valid_effect_speed_combinations(self):
+        for speed in (1, 2):
+            _, payload = mm800_persistence_tool.encode_effect("breathing", "8000ff", speed)
+            self.assertEqual(payload, bytes([speed, 0x80, 0, 0xFF]))
+        for effect in ("rainbow", "moving-rainbow"):
+            for speed in (0, 1, 2):
+                _, payload = mm800_persistence_tool.encode_effect(effect, speed=speed)
+                self.assertEqual(payload[0], speed)
+        with self.assertRaises(ValueError):
+            mm800_persistence_tool.encode_effect("breathing", "8000ff", 0)
+        with self.assertRaises(ValueError):
+            mm800_persistence_tool.encode_effect("rainbow", speed=3)
+
     def test_rainbow_rejects_color(self):
         with self.assertRaises(ValueError):
             mm800_persistence_tool.encode_effect("rainbow", "ffffff")

@@ -78,9 +78,9 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         stock = Path(STOCK).read_bytes()
         candidate = Path(CANDIDATE).read_bytes()
         assert hashlib.sha256(stock).hexdigest() == "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
-        assert hashlib.sha256(candidate).hexdigest() == "1944de505e925a621c85bf722a59840d5ac4dad69334f9582dcd8b50334aa957"
+        assert hashlib.sha256(candidate).hexdigest() == "f6b151f467094f5befc4bbf9d1ebfefba21f02d1452af97e853f25bf5ddfd7cd"
         assert candidate[0x3F00:0x3F08] == b"MM8BUILD"
-        assert candidate[0x3F08:0x3F28].hex() == "0dc571c137528cb62f1509a0ff29d472ad713fb290d090070bafb499044f9a93"
+        assert candidate[0x3F08:0x3F28].hex() == "d07e6783a84b5bac6a2600c490912eab9607268cc85b9ac4685a2170ae5d0a0d"
 
     def setUp(self):
         self.harness = FirmwareHarness(CANDIDATE)
@@ -102,7 +102,7 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         self.boot()
         response, _ = h.dispatch(bytearray([0x0E, 0x25]) + bytes(62))
         self.assertEqual((response[4], response[5], response[6]), (0, 1, 7))
-        self.assertEqual(list(response[58:62]), [0x10, 0x20, 0x30, 1])
+        self.assertEqual(list(response[58:62]), [0x10, 0x20, 0x30, 7])
         preview = effect_packet(0x10, bytes([1, 0x80, 0, 0xFF]))
         save = bytearray(preview)
         save[2] = 0xF0
@@ -142,23 +142,26 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         self.assertEqual(restored.read(OWNER, 1)[0], 2)
 
     def test_all_presets_full_cycles_and_moving_rollover(self):
+        moving_start = "fc3c00fca500eafc0082fc001afc0000fc4c00fcb500dbfc0072fc0008fc5f00fcc700fcfc00c9fc0060fc0600"
+        moving_15 = "00fc4c00fcb500dbfc0072fc0008fc5f00fcc700fcfc00c9fc0060fc0600fc3700fca000effc0085fc001dfc00"
+        moving_45 = "fc3700fca000effc0085fc001dfc0000fc4900fcb200defc0075fc000bfc5c00fcc400fcfc00ccfc0063fc0300"
         cases = [
-            (0x10, bytes([1, 0xFF, 0, 0]), 0, 1, {
+            (0x10, bytes([1, 0xFF, 0, 0]), 1000, {
                 0: "040000" * 15, 1: "130000" * 15, 15: "fe0000" * 15,
                 30: "040000" * 15, 31: "040000" * 15, 32: "130000" * 15, 46: "fe0000" * 15,
             }),
-            (0x20, bytes([1]), 1, 2, {
-                0: "fe0000" * 15, 15: "fefe00" * 15, 45: "00fefe" * 15, 90: "fe0000" * 15,
+            (0x10, bytes([2, 0xFF, 0, 0]), 3000, {
+                0: "040000" * 15, 15: "560000" * 15, 45: "fe0000" * 15, 90: "040000" * 15,
             }),
-            (0x30, bytes([1, 0]), 2, 3, {
-                0: "fc3c00fca500eafc0082fc001afc0000fc4c00fcb500dbfc0072fc0008fc5f00fcc700fcfc00c9fc0060fc0600",
-                15: "00fc4c00fcb500dbfc0072fc0008fc5f00fcc700fcfc00c9fc0060fc0600fc3700fca000effc0085fc001dfc00",
-                45: "fc3700fca000effc0085fc001dfc0000fc4900fcb200defc0075fc000bfc5c00fcc400fcfc00ccfc0063fc0300",
-                87: "fc3c00fca500eafc0082fc001afc0000fc4c00fcb500dbfc0072fc0008fc5f00fcc700fcfc00c9fc0060fc0600",
-            }),
+            (0x20, bytes([0]), 1500, {0: "fe0000" * 15, 15: "00fefe" * 15, 30: "fe0000" * 15}),
+            (0x20, bytes([1]), 3000, {0: "fe0000" * 15, 15: "fefe00" * 15, 45: "00fefe" * 15, 90: "fe0000" * 15}),
+            (0x20, bytes([2]), 6000, {0: "fe0000" * 15, 90: "00fefe" * 15, 180: "fe0000" * 15}),
+            (0x30, bytes([0, 0]), 600, {0: moving_start, 87: moving_start}),
+            (0x30, bytes([1, 0]), 300, {0: moving_start, 15: moving_15, 45: moving_45, 87: moving_start}),
+            (0x30, bytes([2, 0]), 150, {0: moving_start, 87: moving_start}),
         ]
-        for effect, payload, selector, engine_type, expected in cases:
-            with self.subTest(effect=effect):
+        for effect, payload, timing, expected in cases:
+            with self.subTest(effect=effect, speed=payload[0]):
                 h = FirmwareHarness(CANDIDATE)
                 h.initialize_ram()
                 h.call(self.symbols["boot_restore"])
@@ -167,30 +170,33 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
                 for tick in range(190):
                     h.call(self.symbols["lighting_poll_guard"])
                     if tick == 0:
-                        self.assertEqual(h.read(SELECTOR, 1)[0], selector)
                         engine = struct.unpack("<I", h.read(ENGINE, 4))[0]
-                        self.assertEqual(h.read(engine, 1)[0], engine_type)
+                        self.assertEqual(h.read(engine, 1)[0], 1 if effect == 0x10 else (2 if effect == 0x20 else 3))
+                        offset = 20 if effect == 0x30 else 4
+                        self.assertEqual(struct.unpack("<I", h.read(engine + offset, 4))[0], timing)
                     frame = h.read(RGB, 45)
                     frames.append(frame)
                     if tick in expected:
-                        self.assertEqual(frame.hex(), expected[tick], f"unexpected {effect:#x} frame at counter {tick}")
+                        self.assertEqual(frame.hex(), expected[tick], f"unexpected {effect:#x} speed {payload[0]} frame at counter {tick}")
                 self.assertGreater(len(set(frames)), 1)
                 self.assertEqual(h.read(SELECTOR + 1, 1)[0], 3)
-        h = FirmwareHarness(CANDIDATE)
-        h.initialize_ram()
-        h.call(self.symbols["boot_restore"])
-        h.dispatch(effect_packet(0x30, bytes([1, 0])), pump=False)
-        h.call(self.symbols["lighting_poll_guard"])
-        initial = h.read(RGB, 45)
-        for _ in range(86):
-            h.call(self.symbols["lighting_poll_guard"])
-        self.assertEqual(struct.unpack("<I", h.read(COUNTER, 4))[0], 87)
-        h.call(self.symbols["lighting_poll_guard"])
-        self.assertEqual(h.read(RGB, 45), initial)
-        h.write_words(COUNTER, [4294966])
-        h.call(self.symbols["lighting_poll_guard"])
-        self.assertEqual(h.read(RGB, 45), initial)
-        self.assertEqual(struct.unpack("<I", h.read(COUNTER, 4))[0], 1)
+        for speed in range(3):
+            with self.subTest(overflow_speed=speed):
+                h = FirmwareHarness(CANDIDATE)
+                h.initialize_ram()
+                h.call(self.symbols["boot_restore"])
+                h.dispatch(effect_packet(0x30, bytes([speed, 0])), pump=False)
+                h.call(self.symbols["lighting_poll_guard"])
+                initial = h.read(RGB, 45)
+                for _ in range(86):
+                    h.call(self.symbols["lighting_poll_guard"])
+                self.assertEqual(struct.unpack("<I", h.read(COUNTER, 4))[0], 87)
+                h.call(self.symbols["lighting_poll_guard"])
+                self.assertEqual(h.read(RGB, 45), initial)
+                h.write_words(COUNTER, [4294966])
+                h.call(self.symbols["lighting_poll_guard"])
+                self.assertEqual(h.read(RGB, 45), initial)
+                self.assertEqual(struct.unpack("<I", h.read(COUNTER, 4))[0], 1)
 
     def test_v1_static_and_all_stock_brightness_levels(self):
         rgb = bytes(range(45))
