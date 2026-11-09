@@ -77,8 +77,8 @@ IDs:
 
 All other IDs, lengths, flags, speeds, directions, protocol versions, and nonzero
 padding are rejected before effect RAM changes. The broken fast-breathing speed
-0 preset is not exposed. Uploaded frame sequences and arbitrary streamed
-animations are outside this protocol.
+0 preset is not exposed. Custom uploaded animations use the separate GET26/SET26
+protocol in `custom-animation-protocol.md`; arbitrary live streams are not implemented.
 
 `release` sends the stock autonomous-mode command `07 04 01`. It changes runtime
 ownership without erasing the saved profile. Deliberate RGB commands take host

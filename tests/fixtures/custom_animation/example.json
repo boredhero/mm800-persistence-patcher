@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "strict_palette": false,
+  "loop": true,
+  "palette": {
+    "purple": "#8000ff",
+    "pink": "#ff0080",
+    "off": "#000000"
+  },
+  "frames": {
+    "a": {"fill": "purple"},
+    "b": {"fill": "pink"},
+    "c": {
+      "zones": [
+        "purple", "pink", "off", "purple", "pink",
+        "off", "purple", "pink", "off", "purple",
+        "pink", "off", "purple", "pink", "#123456"
+      ]
+    }
+  },
+  "timeline": [
+    {"frame": "a", "duration_ms": 500},
+    {"frame": "b", "duration_ms": 100},
+    {"frame": "a", "duration_ms": 100},
+    {"frame": "c", "duration_ms": 2000}
+  ]
+}

@@ -15,7 +15,7 @@ SECTIONS
     .patch_state 0x10001900 (NOLOAD) : {
         *(.patch_state)
     }
-    ASSERT(SIZEOF(.patch_state) <= 384, "patch state exceeds 384-byte reservation")
+    ASSERT(SIZEOF(.patch_state) <= 1504, "patch state exceeds 1504-byte reservation")
     /DISCARD/ : {
         *(.comment*)
         *(.note*)

@@ -5,6 +5,8 @@
 .global dispatch_set_hook
 .type dispatch_set_hook, %function
 dispatch_set_hook:
+    cmp r0, #0x26
+    beq .Lset_custom_upload
     cmp r0, #0x25
     beq .Lset_effect
     cmp r0, #0x23
@@ -47,12 +49,43 @@ dispatch_set_hook:
     bl set_effect_recipe
     ldr r0, =0x32fb
     bx r0
+.Lset_custom_upload:
+    movs r5, #0
+    ldrb r0, [r4, #2]
+    cmp r0, #0
+    beq .Lcustom_begin
+    cmp r0, #1
+    beq .Lcustom_data
+    cmp r0, #2
+    beq .Lcustom_commit
+    cmp r0, #3
+    bne .Lset_return
+    bl custom_upload_abort
+    ldr r0, =0x32fb
+    bx r0
+.Lcustom_begin:
+    mov r0, r4
+    bl custom_upload_begin
+    ldr r0, =0x32fb
+    bx r0
+.Lcustom_data:
+    mov r0, r4
+    movs r1, #64
+    bl custom_upload_data
+    ldr r0, =0x32fb
+    bx r0
+.Lcustom_commit:
+    bl custom_upload_commit
+    ldr r0, =0x32fb
+    bx r0
 
 .global dispatch_get_hook
 .type dispatch_get_hook, %function
 dispatch_get_hook:
     cmp r0, #0x60
     beq .Lget_iap_debug
+    cmp r0, #0x26
+    beq .Lget_custom_capabilities
     cmp r0, #0x25
     beq .Lget_profile
     cmp r0, #0x24
@@ -72,6 +105,12 @@ dispatch_get_hook:
     movs r5, #50
     mov r0, r4
     bl get_saved_response
+    ldr r0, =0x32fb
+    bx r0
+.Lget_custom_capabilities:
+    movs r5, #64
+    mov r0, r4
+    bl custom_get_capabilities
     ldr r0, =0x32fb
     bx r0
 .Lget_profile:

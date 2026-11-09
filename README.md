@@ -107,7 +107,7 @@ support 0–2. Crossfade takes two colors and holds them during transitions;
 fade-dark takes two colors and fades through a dark interval. Broken speed 0 is
 rejected for breathing and fade-dark. Use `capabilities` to check support and
 `release` to return to stock animation without erasing the saved profile.
-Uploaded frame sequences are not supported.
+Custom JSON animations are covered below.
 
 See `docs/QUICKSTART.md` for a beginner-friendly walkthrough and
 `docs/backup-and-recovery.md` for the recovery procedure.
@@ -143,7 +143,8 @@ use the wizard.
 ## Features
 
 - Restore one static 15-zone RGB profile or device-run animation after power loss.
-- Breathing, uniform rainbow, and moving rainbow at validated speed code 1.
+- Breathing, two-color fades, uniform rainbow, and moving rainbow at validated speeds.
+- Custom JSON frame/delta animations and independent per-zone brightness envelopes.
 - Identical animation parameters for preview and verified persistent save.
 - Independent color per zone; multicolor static profiles are supported.
 - Alternating A/B records for interrupted-save recovery and V1 static migration.
@@ -152,10 +153,10 @@ use the wizard.
 - Stock live and persistent brightness levels remain separate from RGB/effects.
 - Embedded build identity and structural verification.
 
-The renderer's 750/1000 cap is preserved. Uploaded frame sequences and arbitrary
-streamed-animation playback are not implemented. Animation persistence currently
-has offline CPU-test coverage; see `docs/animation-validation.md` before hardware
-validation.
+The renderer's 750/1000 cap is preserved. Arbitrary live streamed-animation
+playback is not implemented; custom animations are compiled and installed as a
+persistent recipe. See `docs/custom-animation-validation.md` for the exact tested
+firmware, hardware results, and remaining limits.
 
 ## Requirements
 
@@ -238,6 +239,59 @@ python3 tools/mm800_persistence_tool.py chip-info
 
 An explicit `/dev/hidrawN` can replace auto discovery. The locator validates
 cached identity and invalidates it after repeated communication failures.
+
+## Custom JSON animations
+
+The compiler provides JSON validation, lossless optimization, five encoders,
+strict reference decoding, and measured size comparisons. These offline commands
+do not change the device:
+
+```sh
+python3 tools/mm800_custom_animation.py validate input.json --timing round
+python3 tools/mm800_custom_animation.py analyze input.json --timing round
+python3 tools/mm800_custom_animation.py compile input.json --timing round --output animation.bin
+python3 tools/mm800_custom_animation.py inspect animation.bin
+python3 tools/benchmark_custom_animation.py
+python3 tools/mm800_custom_animation.py fireflies --output fireflies.json --graph adjacency.json --seed 800 --max-lit 4
+```
+
+The fireflies generator needs an adjacency JSON file containing an array of zone
+pairs, such as `[[0, 1], [1, 2]]`. Use `[]` only if you intentionally want no
+physical-adjacency constraint; zone numbering alone is not a verified physical
+map. `--max-lit 4` limits the effect to four simultaneously lit zones.
+
+Default `exact` timing rejects durations that cannot be represented in 34 ms
+ticks. `--timing round` is an explicit conversion, never a silent one. Brightness
+uses 16-bit fixed-point gains with independent zone tracks; palette checks apply
+to base colors, and the stock global brightness knob is unchanged. See
+`docs/custom-animation-schema.md`, `custom-animation-format.md`,
+`custom-animation-benchmarks.md`, and `custom-animation-plan.md` for the format
+and measured results.
+
+## Install a custom animation
+
+After installing the patched firmware once, install JSON animations without
+another firmware flash. The tool queries the actual device limits before writing
+and verifies the committed bank and generation.
+
+Try the included four-zone fireflies example:
+
+```sh
+python3 tools/mm800_custom_animation.py device-storage
+python3 tools/mm800_custom_animation.py analyze examples/fireflies.json
+python3 tools/mm800_custom_animation.py install examples/fireflies.json
+```
+
+This example loops across 14 zone tracks with up to four simultaneous lit zones.
+It intentionally has no physical-adjacency constraint. To install your own file,
+replace `examples/fireflies.json` with its path; add `--timing round` only if you
+explicitly want durations converted to the 34 ms timing grid.
+
+The payload budget is 1,728 bytes. Supported codecs are dictionary raw/palette,
+delta raw/palette, and brightness-envelope. Envelopes are limited to 153 total
+keyframes and 15 base colors so playback fits in reserved RAM; dictionary/delta
+palettes can contain up to 256 colors. See `docs/custom-animation-protocol.md`
+and `docs/custom-animation-validation.md` for protocol details and test results.
 
 ## Verification and support
 

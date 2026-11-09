@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "name": "fireflies",
+  "duration_ms": 6000,
+  "loop": true,
+  "brightness": 0.7,
+  "strict_palette": true,
+  "palette": {
+    "gold": "#FFD040",
+    "lemon": "#FFF080"
+  },
+  "tracks": [
+    {
+      "zone": 0,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {"time_ms": 0, "brightness": 0.0},
+        {"time_ms": 400, "brightness": 0.0},
+        {"time_ms": 1200, "brightness": 0.85},
+        {"time_ms": 2200, "brightness": 0.0},
+        {"time_ms": 6000, "brightness": 0.0}
+      ]
+    },
+    {
+      "zone": 7,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {"time_ms": 0, "brightness": 0.0},
+        {"time_ms": 2500, "brightness": 0.0},
+        {"time_ms": 3100, "brightness": 0.425},
+        {"time_ms": 4700, "brightness": 0.0},
+        {"time_ms": 6000, "brightness": 0.0}
+      ]
+    }
+  ]
+}

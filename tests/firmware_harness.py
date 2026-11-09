@@ -153,10 +153,10 @@ class FirmwareHarness:
         self.call(0x21D0, (0x40A0, RAM_BASE, 0x41C))
         self.write_words(0x100003F4, [48000])
 
-    def dispatch(self, packet, pump=True):
+    def dispatch(self, packet, pump=True, max_instructions=250000):
         assert len(packet) == 64
         self.write(PACKET, packet)
-        result = self.call(0x309C, (PACKET, 64))
+        result = self.call(0x309C, (PACKET, 64), max_instructions=max_instructions)
         main_loop = getattr(self, "main_loop", None)
         if pump and main_loop is not None:
             self.call(main_loop)

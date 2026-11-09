@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "custom_animation.h"
 
 #define EEPROM_SLOT_A 0x100u
 #define EEPROM_SLOT_B 0x140u
@@ -457,6 +458,10 @@ void boot_restore(void)
     for (uint32_t index = 0; index < 3; index++)
         lifecycle_sequence[index] = 0;
     stock_light_init();
+    if (custom_boot()) {
+        BOOT_STATUS[15] = *LIGHTING_STATE;
+        return;
+    }
     uint32_t found = load_latest(record, &slot, &sequence, &read_errors, &unsupported);
     BOOT_STATUS[2] = (uint8_t)read_errors;
     BOOT_STATUS[3] = (uint8_t)found;
@@ -732,7 +737,7 @@ void get_eeprom_dump_response(uint8_t *packet)
 
 void get_iap_debug_response(uint8_t *packet)
 {
-    copy_bytes(packet + 4, (const uint8_t *)0x5f00u, 48);
+    copy_bytes(packet + 4, (const uint8_t *)0x7f00u, 48);
     for (uint32_t index = 52; index < 64; index++)
         packet[index] = 0;
 }
@@ -814,6 +819,10 @@ uint32_t callback_two_guard(uint32_t context)
 uint32_t lighting_poll_guard(void)
 {
     process_requests();
+    if (*OWNER == OWNER_CUSTOM) {
+        custom_tick();
+        return 0;
+    }
     if (*OWNER == OWNER_SAVED_STATIC || *OWNER == OWNER_HOST_STATIC)
         return 0;
     if ((*OWNER == OWNER_SAVED_ANIMATION || *OWNER == OWNER_HOST_ANIMATION) &&

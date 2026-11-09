@@ -78,6 +78,70 @@ class MM800:
     def chip_info(self):
         return self.query(bytearray([0x0E, 0x24, 0xFF, 0xFF, 0x00]) + bytes(PACKET_SIZE - 5), 61)
 
+    def custom_capabilities(self):
+        response = self.query(bytearray([0x0E, 0x26]) + bytes(PACKET_SIZE - 2), 64)
+        if response[4] != 1:
+            raise RuntimeError("custom animation protocol is unavailable; update the firmware")
+        return {
+            "state": response[5],
+            "codecs": response[6],
+            "codec": response[7],
+            "valid": response[8],
+            "capacity": int.from_bytes(response[9:11], "little"),
+            "size": int.from_bytes(response[11:13], "little"),
+            "generation": int.from_bytes(response[13:17], "little"),
+            "upload_offset": int.from_bytes(response[17:21], "little"),
+            "status": int.from_bytes(response[21:25], "little"),
+            "timing_quantum": int.from_bytes(response[25:27], "little"),
+            "max_palette": int.from_bytes(response[27:29], "little"),
+            "max_tracks": int.from_bytes(response[29:31], "little"),
+            "max_duration_ticks": int.from_bytes(response[31:35], "little"),
+            "max_envelope_keyframes": int.from_bytes(response[35:37], "little"),
+            "max_envelope_colors": int.from_bytes(response[37:39], "little"),
+        }
+
+    def custom_begin(self, size, codec):
+        self.send(bytearray([0x07, 0x26, 0x00, size & 0xFF, size >> 8, codec]) + bytes(PACKET_SIZE - 6))
+
+    def custom_data(self, offset, payload):
+        packet = bytearray([0x07, 0x26, 0x01, offset & 0xFF, offset >> 8]) + payload
+        if len(packet) > PACKET_SIZE:
+            raise ValueError("custom upload chunk is too large")
+        self.send(packet + bytes(PACKET_SIZE - len(packet)))
+
+    def custom_commit(self):
+        self.send(bytearray([0x07, 0x26, 0x02]) + bytes(PACKET_SIZE - 3))
+
+    def custom_abort(self):
+        self.send(bytearray([0x07, 0x26, 0x03]) + bytes(PACKET_SIZE - 3))
+
+    def install_custom_animation(self, data):
+        capabilities = self.custom_capabilities()
+        codec = data[5]
+        if not capabilities["codecs"] & (1 << (codec - 1)):
+            raise RuntimeError(f"device does not support custom animation codec {codec}")
+        if len(data) > capabilities["capacity"]:
+            raise RuntimeError(f"animation is {len(data) - capabilities['capacity']} bytes over the device budget")
+        if codec == 3:
+            keyframes = int.from_bytes(data[16:18], "little")
+            colors = int.from_bytes(data[12:14], "little")
+            if keyframes > capabilities["max_envelope_keyframes"]:
+                raise RuntimeError(f"envelope has {keyframes} keyframes; device limit is {capabilities['max_envelope_keyframes']}")
+            if colors > capabilities["max_envelope_colors"]:
+                raise RuntimeError(f"envelope has {colors} colors; device limit is {capabilities['max_envelope_colors']}")
+        self.custom_begin(len(data), codec)
+        try:
+            for offset in range(0, len(data), 48):
+                self.custom_data(offset, data[offset:offset + 48])
+            self.custom_commit()
+            committed = self.custom_capabilities()
+            if committed["status"] != 0 or not committed["valid"] or committed["size"] != len(data):
+                raise RuntimeError(f"custom animation commit failed with status 0x{committed['status']:02x}")
+            return committed
+        except Exception:
+            self.custom_abort()
+            raise
+
     def profile(self):
         response = self.query(bytearray([0x0E, 0x25]) + bytes(PACKET_SIZE - 2), 64)
         if response[5] != 2:

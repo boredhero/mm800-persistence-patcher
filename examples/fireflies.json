@@ -1,0 +1,726 @@
+{
+  "version": 1,
+  "name": "fireflies",
+  "duration_ms": 5984,
+  "loop": true,
+  "brightness": "0.8",
+  "strict_palette": true,
+  "palette": {
+    "gold": "#ffd040",
+    "lemon": "#fff080"
+  },
+  "adjacency": [],
+  "max_lit_zones": 4,
+  "tracks": [
+    {
+      "zone": 0,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2688,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2960,
+          "brightness": 0.3973470106333953
+        },
+        {
+          "time_ms": 3096,
+          "brightness": 0.3973470106333953
+        },
+        {
+          "time_ms": 3436,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4799,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5207,
+          "brightness": 0.44837642506882974
+        },
+        {
+          "time_ms": 5275,
+          "brightness": 0.44837642506882974
+        },
+        {
+          "time_ms": 5649,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 1,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1090,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1464,
+          "brightness": 0.26337501107240247
+        },
+        {
+          "time_ms": 1702,
+          "brightness": 0.26337501107240247
+        },
+        {
+          "time_ms": 2076,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 2,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 851,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1089,
+          "brightness": 0.8403158521020389
+        },
+        {
+          "time_ms": 1157,
+          "brightness": 0.8403158521020389
+        },
+        {
+          "time_ms": 1259,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3870,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4074,
+          "brightness": 0.2656869388026898
+        },
+        {
+          "time_ms": 4210,
+          "brightness": 0.2656869388026898
+        },
+        {
+          "time_ms": 4312,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5562,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5732,
+          "brightness": 0.7966775865827666
+        },
+        {
+          "time_ms": 5902,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 3,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 99,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 201,
+          "brightness": 0.5328486383527629
+        },
+        {
+          "time_ms": 405,
+          "brightness": 0.5328486383527629
+        },
+        {
+          "time_ms": 711,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2363,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2499,
+          "brightness": 0.5760690606862862
+        },
+        {
+          "time_ms": 2601,
+          "brightness": 0.5760690606862862
+        },
+        {
+          "time_ms": 2771,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3232,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3334,
+          "brightness": 0.2699438607268997
+        },
+        {
+          "time_ms": 3504,
+          "brightness": 0.2699438607268997
+        },
+        {
+          "time_ms": 3878,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4575,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4711,
+          "brightness": 0.5361435868528319
+        },
+        {
+          "time_ms": 4949,
+          "brightness": 0.5361435868528319
+        },
+        {
+          "time_ms": 5051,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 4,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3543,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3917,
+          "brightness": 0.6223001637405735
+        },
+        {
+          "time_ms": 4155,
+          "brightness": 0.6223001637405735
+        },
+        {
+          "time_ms": 4461,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 5,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1565,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1667,
+          "brightness": 0.6886986903471998
+        },
+        {
+          "time_ms": 1837,
+          "brightness": 0.6886986903471998
+        },
+        {
+          "time_ms": 2109,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2845,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3219,
+          "brightness": 0.5978836596335262
+        },
+        {
+          "time_ms": 3355,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 6,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 107,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 209,
+          "brightness": 0.6054327720420178
+        },
+        {
+          "time_ms": 311,
+          "brightness": 0.6054327720420178
+        },
+        {
+          "time_ms": 719,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2323,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2425,
+          "brightness": 0.6571890457337404
+        },
+        {
+          "time_ms": 2765,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5467,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5603,
+          "brightness": 0.27135473207014393
+        },
+        {
+          "time_ms": 5943,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 7,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 707,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1013,
+          "brightness": 0.3455767451228609
+        },
+        {
+          "time_ms": 1183,
+          "brightness": 0.3455767451228609
+        },
+        {
+          "time_ms": 1285,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1370,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1710,
+          "brightness": 0.291621156825046
+        },
+        {
+          "time_ms": 1744,
+          "brightness": 0.291621156825046
+        },
+        {
+          "time_ms": 2016,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4077,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4179,
+          "brightness": 0.8061684497878799
+        },
+        {
+          "time_ms": 4383,
+          "brightness": 0.8061684497878799
+        },
+        {
+          "time_ms": 4519,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 8,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 214,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 316,
+          "brightness": 0.8992680681367629
+        },
+        {
+          "time_ms": 622,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2126,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2296,
+          "brightness": 0.30785564729779497
+        },
+        {
+          "time_ms": 2364,
+          "brightness": 0.30785564729779497
+        },
+        {
+          "time_ms": 2466,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2863,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3101,
+          "brightness": 0.7229619143018837
+        },
+        {
+          "time_ms": 3237,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3350,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3690,
+          "brightness": 0.6244094195298842
+        },
+        {
+          "time_ms": 3860,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 9,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2863,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3067,
+          "brightness": 0.41205760497702437
+        },
+        {
+          "time_ms": 3101,
+          "brightness": 0.41205760497702437
+        },
+        {
+          "time_ms": 3203,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4001,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4205,
+          "brightness": 0.6309953252649376
+        },
+        {
+          "time_ms": 4307,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 11,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 825,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1063,
+          "brightness": 0.6222203023892616
+        },
+        {
+          "time_ms": 1267,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3401,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 3673,
+          "brightness": 0.8404750443910062
+        },
+        {
+          "time_ms": 3945,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5333,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5503,
+          "brightness": 0.4807923749373577
+        },
+        {
+          "time_ms": 5605,
+          "brightness": 0.4807923749373577
+        },
+        {
+          "time_ms": 5741,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 12,
+      "color": "gold",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1481,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 1651,
+          "brightness": 0.8048110678998811
+        },
+        {
+          "time_ms": 1719,
+          "brightness": 0.8048110678998811
+        },
+        {
+          "time_ms": 1889,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 13,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2352,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 2454,
+          "brightness": 0.8445612118764619
+        },
+        {
+          "time_ms": 2556,
+          "brightness": 0.8445612118764619
+        },
+        {
+          "time_ms": 2828,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4363,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4533,
+          "brightness": 0.3316657613589186
+        },
+        {
+          "time_ms": 4635,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4778,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5186,
+          "brightness": 0.3637643621373063
+        },
+        {
+          "time_ms": 5220,
+          "brightness": 0.3637643621373063
+        },
+        {
+          "time_ms": 5458,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    },
+    {
+      "zone": 14,
+      "color": "lemon",
+      "interpolation": "linear",
+      "keyframes": [
+        {
+          "time_ms": 0,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 126,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 364,
+          "brightness": 0.3663155776841223
+        },
+        {
+          "time_ms": 602,
+          "brightness": 0.3663155776841223
+        },
+        {
+          "time_ms": 806,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4715,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 4851,
+          "brightness": 0.25748629976559206
+        },
+        {
+          "time_ms": 5021,
+          "brightness": 0.25748629976559206
+        },
+        {
+          "time_ms": 5293,
+          "brightness": 0.0
+        },
+        {
+          "time_ms": 5984,
+          "brightness": 0.0
+        }
+      ]
+    }
+  ]
+}
