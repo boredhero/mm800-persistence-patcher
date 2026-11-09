@@ -287,15 +287,16 @@ It intentionally has no physical-adjacency constraint. To install your own file,
 replace `examples/fireflies.json` with its path; add `--timing round` only if you
 explicitly want durations converted to the 34 ms timing grid.
 
-For a slower 15-shade lilac-to-midnight-purple rotation:
+For a smooth 15-shade lilac-to-midnight-purple rotation:
 
 ```sh
 python3 tools/mm800_custom_animation.py analyze examples/purple-rotation.json
 python3 tools/mm800_custom_animation.py install examples/purple-rotation.json
 ```
 
-The purple example moves one stock zone every 748 ms and completes a loop in
-11.22 seconds. Its 15 frames compile to a 272-byte delta-palette animation.
+The purple example uses four interpolation frames per zone transition, moves one
+stock zone every 544 ms, and completes a loop in 8.16 seconds. Its 60 frames and
+60 colors compile to a 1,412-byte delta-palette animation.
 
 The payload budget is 1,728 bytes. Supported codecs are dictionary raw/palette,
 delta raw/palette, and brightness-envelope. Envelopes are limited to 153 total
