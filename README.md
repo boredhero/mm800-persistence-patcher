@@ -27,7 +27,7 @@ sudo apt install clang lld llvm python3 udisks2 util-linux
 Arch Linux or Manjaro:
 
 ```sh
-sudo pacman -S clang lld llvm python udisks2 util-linux
+sudo pacman -S --needed clang lld llvm python udisks2 util-linux
 ```
 
 Check that everything is installed:

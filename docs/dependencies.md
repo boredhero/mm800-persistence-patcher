@@ -37,7 +37,7 @@ sudo dnf install clang lld llvm python3 udisks2 util-linux
 ## Arch Linux and Manjaro
 
 ```sh
-sudo pacman -S clang lld llvm python udisks2 util-linux
+sudo pacman -S --needed clang lld llvm python udisks2 util-linux
 ```
 
 Review package names with your administrator before installation. No script in
