@@ -104,12 +104,24 @@ static uint32_t stock_construct_effect(uint32_t constructor, void *config)
 
 static uint32_t stock_eeprom_read(uint32_t offset, void *destination, uint32_t length)
 {
-    return ((eeprom_fn)0x22f9u)(offset, destination, length);
+    uint32_t primask;
+    uint32_t status;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    status = ((eeprom_fn)0x22f9u)(offset, destination, length);
+    __asm volatile("msr primask, %0" : : "r"(primask));
+    return status;
 }
 
 static uint32_t stock_eeprom_write(uint32_t offset, void *source, uint32_t length)
 {
-    return ((eeprom_fn)0x232du)(offset, source, length);
+    uint32_t primask;
+    uint32_t status;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    status = ((eeprom_fn)0x232du)(offset, source, length);
+    __asm volatile("msr primask, %0" : : "r"(primask));
+    return status;
 }
 
 static uint32_t load24(const uint8_t *bytes)
@@ -681,8 +693,11 @@ static void get_chip_info_response(uint8_t *packet)
 {
     uint32_t command[1] __attribute__((aligned(4)));
     uint32_t result[5] __attribute__((aligned(4)));
+    uint32_t primask;
     for (uint32_t index = 0; index < 56; index++)
         packet[5 + index] = 0;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
     command[0] = 0x36;
     result[0] = 0;
     ((void (*)(uint32_t *, uint32_t *))0x1fff1ff1u)(command, result);
@@ -699,6 +714,7 @@ static void get_chip_info_response(uint8_t *packet)
     packet[14] = (uint8_t)result[0];
     for (uint32_t index = 0; index < 4; index++)
         store32(packet + 15 + index * 4, result[index + 1]);
+    __asm volatile("msr primask, %0" : : "r"(primask));
     packet[31] = 'M';
     packet[32] = 'C';
     packet[33] = 'U';
