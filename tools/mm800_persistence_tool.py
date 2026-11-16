@@ -5,7 +5,7 @@ import select
 import time
 from pathlib import Path
 
-from hidraw_locator import locate, note_failure, note_success
+from hidraw_locator import bcd_device, locate, note_failure, note_success
 from firmware_version import load_firmware_version
 
 PACKET_SIZE = 64
@@ -28,6 +28,11 @@ class MM800:
             raise RuntimeError(f"{self.device} is not the MM800 (1b1c:1b3b)")
         if "HID_PHYS=" not in identity or not identity.split("HID_PHYS=", 1)[1].splitlines()[0].endswith("/input0"):
             raise RuntimeError(f"{self.device} is not the MM800 control interface (/input0)")
+        if bcd_device(self.device) == "0.03":
+            raise RuntimeError(
+                "MM800 is in bootloader mode (bcdDevice=0.03); application commands are unavailable. "
+                "Reconnect to retry application startup, or use pinhole recovery if it persists."
+            )
         self.fd = os.open(self.device, os.O_RDWR | os.O_NONBLOCK)
 
     def close(self):

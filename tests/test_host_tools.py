@@ -93,6 +93,29 @@ class HidTests(unittest.TestCase):
                 locator.note_success("/dev/hidraw7")
                 self.assertEqual(locator.read_record()["failures"], 0)
 
+    def test_sysfs_bcd_device_is_normalized(self):
+        resolved = Path("/sys/devices/usb1/1-3.1/1-3.1:1.0/0003:1B1C:1B3B.0016")
+        with mock.patch.object(Path, "resolve", return_value=resolved), \
+             mock.patch.object(Path, "read_text", return_value="0003\n"):
+            self.assertEqual(locator.bcd_device("/dev/hidraw7"), "0.03")
+
+    def test_bootloader_descriptor_fails_before_hid_open(self):
+        identity = "HID_ID=0003:00001B1C:00001B3B\nHID_PHYS=usb-0000:03:00.0-3.1/input0\n"
+        with mock.patch.object(Path, "read_text", return_value=identity), \
+             mock.patch.object(mm800_persistence_tool, "bcd_device", return_value="0.03"), \
+             mock.patch("os.open") as hid_open:
+            with self.assertRaisesRegex(RuntimeError, "bootloader mode.*application commands are unavailable"):
+                mm800_persistence_tool.MM800("/dev/hidraw-test")
+        hid_open.assert_not_called()
+
+    def test_application_descriptor_allows_hid_open(self):
+        identity = "HID_ID=0003:00001B1C:00001B3B\nHID_PHYS=usb-0000:03:00.0-3.1/input0\n"
+        with mock.patch.object(Path, "read_text", return_value=identity), \
+             mock.patch.object(mm800_persistence_tool, "bcd_device", return_value="1.02"), \
+             mock.patch("os.open", return_value=7):
+            mm800 = mm800_persistence_tool.MM800("/dev/hidraw-test")
+        self.assertEqual(mm800.fd, 7)
+
 
 class EffectTests(unittest.TestCase):
     def make_mm800(self):
