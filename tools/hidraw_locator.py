@@ -18,6 +18,17 @@ def valid_interface(path):
         return False
 
 
+def bcd_device(path):
+    device = (Path("/sys/class/hidraw") / Path(path).name / "device").resolve()
+    for parent in device.parents:
+        try:
+            value = int((parent / "bcdDevice").read_text().strip(), 16)
+            return f"{value >> 8:x}.{value & 0xff:02x}"
+        except (OSError, ValueError):
+            pass
+    return None
+
+
 def candidates():
     result = []
     for entry in sorted(Path("/sys/class/hidraw").glob("hidraw*")):

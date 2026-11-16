@@ -215,7 +215,10 @@ original backup with the same procedure.
 
 ## Profile control
 
-The host tool auto-locates and caches the MM800 control interface:
+The host tool auto-locates and caches the MM800 control interface. It also checks
+the USB device version before sending commands: `bcdDevice=0.03` means the pad is
+in resident-bootloader mode, so application commands are unavailable. Reconnect
+to retry application startup; use pinhole recovery if the problem persists.
 
 ```sh
 python3 tools/mm800_persistence_tool.py get-current
