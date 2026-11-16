@@ -54,23 +54,46 @@ typedef struct {
 
 #define ENVELOPE_KEYFRAME_MAX 153u
 #define ENVELOPE_PALETTE_MAX 15u
+#define FRAME_PALETTE_MAX 256u
+#define DELTA_RECORD_MAX 53u
+
+typedef struct {
+    uint8_t keyframes[ENVELOPE_KEYFRAME_MAX * 6];
+    EnvelopeTrack tracks[15];
+    uint8_t palette[ENVELOPE_PALETTE_MAX * 3];
+} EnvelopeStorage;
+
+typedef struct {
+    uint8_t palette[FRAME_PALETTE_MAX * 3];
+    uint8_t scratch[56];
+} FrameStorage;
 
 __attribute__((section(".patch_state"))) CustomState custom_state;
 __attribute__((section(".patch_state"))) union {
-    uint8_t scratch[48];
-    uint8_t envelope_keyframes[ENVELOPE_KEYFRAME_MAX * 6];
+    EnvelopeStorage envelope;
+    FrameStorage frame;
 } custom_buffer;
-__attribute__((section(".patch_state"))) EnvelopeTrack envelope_tracks[15];
-__attribute__((section(".patch_state"))) uint8_t envelope_palette[ENVELOPE_PALETTE_MAX * 3];
 
 static uint32_t eeprom_read(uint32_t offset, void *destination, uint32_t length)
 {
-    return ((uint32_t (*)(uint32_t, void *, uint32_t))0x22f9u)(offset, destination, length);
+    uint32_t primask;
+    uint32_t status;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    status = ((uint32_t (*)(uint32_t, void *, uint32_t))0x22f9u)(offset, destination, length);
+    __asm volatile("msr primask, %0" : : "r"(primask));
+    return status;
 }
 
 static uint32_t eeprom_write(uint32_t offset, void *source, uint32_t length)
 {
-    return ((uint32_t (*)(uint32_t, void *, uint32_t))0x232du)(offset, source, length);
+    uint32_t primask;
+    uint32_t status;
+    __asm volatile("mrs %0, primask" : "=r"(primask));
+    __asm volatile("cpsid i");
+    status = ((uint32_t (*)(uint32_t, void *, uint32_t))0x232du)(offset, source, length);
+    __asm volatile("msr primask, %0" : : "r"(primask));
+    return status;
 }
 
 static uint32_t load32(const uint8_t *bytes)
@@ -224,37 +247,28 @@ static uint32_t palette_color(uint32_t index, uint8_t *output)
 {
     if (index >= custom_state.palette_count)
         return 0;
-    if (custom_state.codec == 3) {
-        copy_bytes(output, envelope_palette + index * 3, 3);
-        return 1;
-    }
-    return eeprom_read(payload_address() + CUSTOM_HEADER_SIZE + index * 3, output, 3) == 0;
-}
-
-static uint32_t packed_index(uint32_t address, uint32_t width, uint32_t index, uint32_t count, uint32_t *value)
-{
-    uint8_t byte;
-    if (index >= count)
-        return 0;
-    if (width == 8) {
-        if (eeprom_read(address + index, &byte, 1) != 0)
-            return 0;
-        *value = byte;
-        return 1;
-    }
-    if (eeprom_read(address + index / 2, &byte, 1) != 0)
-        return 0;
-    if ((count & 1) && index + 1 == count && (byte & 0xf0))
-        return 0;
-    *value = (index & 1) ? byte >> 4 : byte & 15;
+    const uint8_t *palette = custom_state.codec == 3 ?
+        custom_buffer.envelope.palette : custom_buffer.frame.palette;
+    copy_bytes(output, palette + index * 3, 3);
     return 1;
 }
 
-static uint32_t packed_frame(uint32_t address, uint32_t width, uint8_t *output)
+static uint32_t packed_index(const uint8_t *packed, uint32_t width, uint32_t index, uint32_t count, uint32_t *value)
+{
+    if (index >= count)
+        return 0;
+    uint8_t byte = packed[width == 8 ? index : index / 2];
+    if (width != 8 && (count & 1) && index + 1 == count && (byte & 0xf0))
+        return 0;
+    *value = width == 8 ? byte : ((index & 1) ? byte >> 4 : byte & 15);
+    return 1;
+}
+
+static uint32_t packed_frame(const uint8_t *packed, uint32_t width, uint8_t *output)
 {
     for (uint32_t zone = 0; zone < 15; zone++) {
         uint32_t index;
-        if (!packed_index(address, width, zone, 15, &index))
+        if (!packed_index(packed, width, zone, 15, &index))
             return 0;
         if (!palette_color(index, output + zone * 3))
             return 0;
@@ -262,14 +276,10 @@ static uint32_t packed_frame(uint32_t address, uint32_t width, uint8_t *output)
     return 1;
 }
 
-static uint32_t raw_frame(uint32_t address, uint8_t *output)
-{
-    return eeprom_read(address, output, 45) == 0;
-}
-
 static uint32_t dictionary_entry(uint8_t *output)
 {
     uint8_t entry[6] __attribute__((aligned(4)));
+    uint8_t frame[45] __attribute__((aligned(4)));
     uint32_t address = timeline_address() + custom_state.index * 6;
     if (eeprom_read(address, entry, 6) != 0 || load32(entry + 2) == 0)
         return 0;
@@ -280,7 +290,11 @@ static uint32_t dictionary_entry(uint8_t *output)
         (custom_state.index == 0 && frame_id != custom_state.initial))
         return 0;
     uint32_t address_frame = payload_address() + CUSTOM_HEADER_SIZE + custom_state.palette_bytes + frame_id * stride;
-    if (!(width == 0 ? raw_frame(address_frame, output) : packed_frame(address_frame, width, output)))
+    if (eeprom_read(address_frame, frame, stride) != 0)
+        return 0;
+    if (width == 0)
+        copy_bytes(output, frame, 45);
+    else if (!packed_frame(frame, width, output))
         return 0;
     custom_state.remaining = load32(entry + 2);
     return 1;
@@ -288,14 +302,16 @@ static uint32_t dictionary_entry(uint8_t *output)
 
 static uint32_t delta_entry(uint8_t *output)
 {
-    uint8_t header[8] __attribute__((aligned(4)));
+    uint8_t record[DELTA_RECORD_MAX] __attribute__((aligned(4)));
     if (custom_state.delta_offset > custom_state.timeline_bytes ||
         custom_state.timeline_bytes - custom_state.delta_offset < 5)
         return 0;
+    uint32_t available = custom_state.timeline_bytes - custom_state.delta_offset;
+    uint32_t read_length = available < DELTA_RECORD_MAX ? available : DELTA_RECORD_MAX;
     uint32_t address = timeline_address() + custom_state.delta_offset;
-    if (eeprom_read(address, header, 5) != 0 || load32(header + 1) == 0)
+    if (eeprom_read(address, record, read_length) != 0 || load32(record + 1) == 0)
         return 0;
-    uint32_t kind = header[0];
+    uint32_t kind = record[0];
     uint32_t width = custom_state.palette_count ? (custom_state.palette_count <= 16 ? 4 : 8) : 0;
     uint32_t next;
     if (kind == 0 || kind == 2) {
@@ -303,22 +319,17 @@ static uint32_t delta_entry(uint8_t *output)
         if ((kind == 0) != (width == 0))
             return 0;
         next = 5 + stride;
-        if (next > custom_state.timeline_bytes - custom_state.delta_offset)
+        if (next > read_length)
             return 0;
-        if (kind == 0) {
-            if (!raw_frame(address + 5, output))
-                return 0;
-        } else if (!packed_frame(address + 5, width, output)) {
+        if (kind == 0)
+            copy_bytes(output, record + 5, 45);
+        else if (!packed_frame(record + 5, width, output))
             return 0;
-        }
     } else if (kind == 1 || kind == 3) {
-        if ((kind == 1) != (width == 0) || custom_state.index == 0 ||
-            custom_state.timeline_bytes - custom_state.delta_offset < 8)
+        if ((kind == 1) != (width == 0) || custom_state.index == 0 || read_length < 8)
             return 0;
-        if (eeprom_read(address + 5, header + 5, 3) != 0)
-            return 0;
-        uint32_t mask = load16(header + 5);
-        uint32_t count = header[7];
+        uint32_t mask = load16(record + 5);
+        uint32_t count = record[7];
         if (mask & 0x8000 || count > 15)
             return 0;
         uint32_t bits = 0;
@@ -329,18 +340,17 @@ static uint32_t delta_entry(uint8_t *output)
             return 0;
         uint32_t replacement_bytes = width == 0 ? count * 3 : (width == 8 ? count : (count + 1) / 2);
         next = 8 + replacement_bytes;
-        if (next > custom_state.timeline_bytes - custom_state.delta_offset)
+        if (next > read_length)
             return 0;
         uint32_t replacement_index = 0;
         for (uint32_t zone = 0; zone < 15; zone++) {
             if (!(mask & (1u << zone)))
                 continue;
             if (width == 0) {
-                if (eeprom_read(address + 8 + replacement_index * 3, output + zone * 3, 3) != 0)
-                    return 0;
+                copy_bytes(output + zone * 3, record + 8 + replacement_index * 3, 3);
             } else {
                 uint32_t color_index;
-                if (!packed_index(address + 8, width, replacement_index, count, &color_index))
+                if (!packed_index(record + 8, width, replacement_index, count, &color_index))
                     return 0;
                 if (!palette_color(color_index, output + zone * 3))
                     return 0;
@@ -351,7 +361,7 @@ static uint32_t delta_entry(uint8_t *output)
         return 0;
     }
     custom_state.delta_offset += next;
-    custom_state.remaining = load32(header + 1);
+    custom_state.remaining = load32(record + 1);
     return 1;
 }
 
@@ -460,7 +470,7 @@ static uint32_t envelope_validate(void)
 
 static void envelope_load_interval(EnvelopeTrack *track, EnvelopeInterval *interval)
 {
-    const uint8_t *current = custom_buffer.envelope_keyframes + (track->first + track->key) * 6;
+    const uint8_t *current = custom_buffer.envelope.keyframes + (track->first + track->key) * 6;
     interval->start_time = load32(current);
     interval->start_gain = load16(current + 4);
     interval->end_time = interval->start_time;
@@ -480,7 +490,7 @@ static uint32_t envelope_playback(uint8_t *output)
     for (uint32_t zone = 0; zone < 45; zone++)
         output[zone] = 0;
     for (uint32_t index = 0; index < custom_state.frame_count; index++) {
-        EnvelopeTrack *track = &envelope_tracks[index];
+        EnvelopeTrack *track = &custom_buffer.envelope.tracks[index];
         if (track->key == 0xffff) {
             uint8_t table[6];
             uint32_t address = payload_address() + CUSTOM_HEADER_SIZE + custom_state.palette_bytes + index * 6;
@@ -543,7 +553,7 @@ static void reset_playback(void)
     custom_state.delta_offset = 0;
     custom_state.remaining = 0;
     for (uint32_t index = 0; index < 15; index++)
-        envelope_tracks[index].key = 0xffff;
+        custom_buffer.envelope.tracks[index].key = 0xffff;
 }
 
 static uint32_t validate_animation(void)
@@ -555,27 +565,36 @@ static uint32_t validate_animation(void)
         uint32_t width = custom_state.palette_count ? (custom_state.palette_count <= 16 ? 4 : 8) : 0;
         uint32_t stride = width == 0 ? 45 : (width == 4 ? 8 : 15);
         for (uint32_t frame = 0; frame < custom_state.frame_count; frame++) {
+            uint8_t packed[45] __attribute__((aligned(4)));
             uint32_t address = payload_address() + CUSTOM_HEADER_SIZE + custom_state.palette_bytes + frame * stride;
-            if (!(width == 0 ? raw_frame(address, custom_buffer.scratch) : packed_frame(address, width, custom_buffer.scratch)))
+            if (eeprom_read(address, packed, stride) != 0)
+                return 0;
+            if (width == 0)
+                copy_bytes(custom_buffer.frame.scratch, packed, 45);
+            else if (!packed_frame(packed, width, custom_buffer.frame.scratch))
                 return 0;
         }
     }
     for (uint32_t index = 0; index < custom_state.timeline_count; index++) {
-        if (!decode_entry(custom_buffer.scratch, 1))
+        if (!decode_entry(custom_buffer.frame.scratch, 1))
             return 0;
     }
     return custom_state.codec != 2 || custom_state.delta_offset == custom_state.timeline_bytes;
 }
 
-static uint32_t prepare_envelope(void)
+static uint32_t prepare_playback(void)
 {
-    if (custom_state.codec != 3)
-        return 1;
-    if (eeprom_read(payload_address() + CUSTOM_HEADER_SIZE, envelope_palette, custom_state.palette_bytes) != 0)
+    if (custom_state.codec != 3) {
+        return custom_state.palette_bytes == 0 ||
+            eeprom_read(payload_address() + CUSTOM_HEADER_SIZE, custom_buffer.frame.palette,
+                        custom_state.palette_bytes) == 0;
+    }
+    if (eeprom_read(payload_address() + CUSTOM_HEADER_SIZE, custom_buffer.envelope.palette,
+                    custom_state.palette_bytes) != 0)
         return 0;
     for (uint32_t base = 0; base < custom_state.timeline_bytes; base += 48) {
         uint32_t count = custom_state.timeline_bytes - base < 48 ? custom_state.timeline_bytes - base : 48;
-        if (eeprom_read(timeline_address() + base, custom_buffer.envelope_keyframes + base, count) != 0)
+        if (eeprom_read(timeline_address() + base, custom_buffer.envelope.keyframes + base, count) != 0)
             return 0;
     }
     return 1;
@@ -586,7 +605,7 @@ static uint32_t boot_bank(uint32_t bank, uint32_t generation)
     custom_state.bank = bank;
     custom_state.generation = generation;
     custom_state.state = CUSTOM_STATE_EMPTY;
-    if (!decode_header_at(bank + CUSTOM_BANK_HEADER) || !validate_animation() || !prepare_envelope())
+    if (!decode_header_at(bank + CUSTOM_BANK_HEADER) || !prepare_playback() || !validate_animation())
         return 0;
     custom_state.state = CUSTOM_STATE_VALID;
     reset_playback();
@@ -626,6 +645,7 @@ uint32_t custom_boot(void)
 
 void custom_tick(void)
 {
+    uint8_t output[45] __attribute__((aligned(4)));
     custom_state.decoding = 1;
     if (runtime_owner_ram != OWNER_CUSTOM || custom_state.state != CUSTOM_STATE_VALID)
         goto done;
@@ -645,11 +665,14 @@ void custom_tick(void)
             goto done;
         }
     }
-    if (!decode_entry((uint8_t *)CUSTOM_RGB, 0) || (custom_state.codec != 3 && !custom_state.remaining)) {
+    if (custom_state.codec == 2)
+        copy_bytes(output, (const uint8_t *)CUSTOM_RGB, 45);
+    if (!decode_entry(output, 0) || (custom_state.codec != 3 && !custom_state.remaining)) {
         custom_state.state = CUSTOM_STATE_EMPTY;
         runtime_owner_ram = 0;
         goto done;
     }
+    copy_bytes((uint8_t *)CUSTOM_RGB, output, 45);
     if (custom_state.codec != 3)
         custom_state.remaining--;
 done:
@@ -737,8 +760,8 @@ uint32_t custom_upload_data(uint8_t *packet, uint32_t length)
         custom_state.last_status = 2;
         return 2;
     }
-    copy_bytes(custom_buffer.scratch, packet + 5, count);
-    if (eeprom_write(custom_state.bank + CUSTOM_BANK_HEADER + offset, custom_buffer.scratch, count) != 0) {
+    copy_bytes(custom_buffer.frame.scratch, packet + 5, count);
+    if (eeprom_write(custom_state.bank + CUSTOM_BANK_HEADER + offset, custom_buffer.frame.scratch, count) != 0) {
         custom_state.last_status = 3;
         return 3;
     }
@@ -755,7 +778,7 @@ uint32_t custom_upload_commit(void)
         return 4;
     }
     runtime_owner_ram = 0;
-    if (!decode_header_at(custom_state.bank + CUSTOM_BANK_HEADER) || !validate_animation() || !prepare_envelope()) {
+    if (!decode_header_at(custom_state.bank + CUSTOM_BANK_HEADER) || !prepare_playback() || !validate_animation()) {
         custom_state.last_status = 5;
         return 5;
     }

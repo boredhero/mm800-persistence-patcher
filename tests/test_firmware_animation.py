@@ -78,9 +78,9 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
         stock = Path(STOCK).read_bytes()
         candidate = Path(CANDIDATE).read_bytes()
         assert hashlib.sha256(stock).hexdigest() == "5917b0de570296ba2a80cf5aa67f5bf0ef3026685453eb070364f450c3ab65fa"
-        assert hashlib.sha256(candidate).hexdigest() == "732fd06bca1237e5878c6de4cb0989b1596856b8609bf114ec67637f1e40dedd"
+        assert hashlib.sha256(candidate).hexdigest() == "ccd97e8400f626c91f3818ab6a409b8138e871243e157750c85bfec47775c68c"
         assert candidate[0x5F00:0x5F08] == b"MM8BUILD"
-        assert candidate[0x5F08:0x5F28].hex() == "2fdd9f17c820db213cceb9feb84736f47fa1bec1a9499c354940577064e93b4c"
+        assert candidate[0x5F08:0x5F28].hex() == "99d3b2d602e5e7c692b7e9eb82e6b67ea5af4033b2e9ce186ab17f6805f36c0d"
 
     def setUp(self):
         self.harness = FirmwareHarness(CANDIDATE)
@@ -609,7 +609,7 @@ class FinalFirmwareAnimationTests(unittest.TestCase):
             h.call(0x6F00, max_instructions=10)
 
     def test_actual_msp_stack_floor_and_state_reservation(self):
-        state_symbols = ["boot_status_ram", "runtime_owner_ram", "last_save_status_ram", "active_recipe", "request_queue", "request_head", "request_count", "custom_buffer", "envelope_tracks", "envelope_palette"]
+        state_symbols = ["boot_status_ram", "runtime_owner_ram", "last_save_status_ram", "active_recipe", "request_queue", "request_head", "request_count", "custom_state", "custom_buffer"]
         addresses = sorted(self.symbols[name] for name in state_symbols)
         self.assertGreaterEqual(addresses[0], 0x10001900)
         self.assertLess(addresses[-1], 0x10001EE0)

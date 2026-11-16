@@ -18,7 +18,7 @@ CANDIDATE = os.environ.get("MM800_CANDIDATE")
 PATCH_ELF = os.environ.get("MM800_PATCH_ELF")
 READY = bool(unicorn and STOCK and CANDIDATE and PATCH_ELF)
 if READY:
-    from firmware_harness import FirmwareHarness, OWNER, RGB, PACKET
+    from firmware_harness import FirmwareHarness, OWNER, RGB, PACKET, IAP_ENTRY, STACK_TOP
     from custom_animation import CODECS, Entry, decode_animation
     from animation_brightness import load_animation_document, optimize_animation_document
 
@@ -184,6 +184,78 @@ class CustomFirmwareTests(unittest.TestCase):
         self.harness.call(self.symbols["custom_tick"])
         frames, _, _, _ = decode_animation(data)
         self.assertEqual(self.harness.read(RGB, 45), frames[0])
+
+    def test_purple_delta_palette_uses_bounded_cached_reads(self):
+        from custom_animation import encode_candidate
+
+        example = REPO / "examples" / "purple-rotation.json"
+        animation = optimize_animation_document(load_animation_document(example))
+        data = encode_candidate(animation, "delta-palette")
+        self.assertEqual(len(data), 1412)
+        self.upload(data)
+        h = self.harness
+        h.iap_commands.clear()
+        boot = h.call(self.symbols["boot_restore"])
+        self.assertLess(boot["instructions"], 250000)
+        self.assertLessEqual(len(h.iap_commands), 120)
+        from unicorn.arm_const import UC_ARM_REG_PRIMASK
+        primasks = []
+        def observe_iap(uc, address, _size, _data):
+            if address == IAP_ENTRY:
+                primasks.append(uc.reg_read(UC_ARM_REG_PRIMASK))
+        h.uc.hook_add(unicorn.UC_HOOK_CODE, observe_iap)
+        frames, entries, _, _ = decode_animation(data)
+        expected = [frames[entry.frame] for entry in entries for _ in range(entry.duration)]
+        for loop in range(100):
+            for tick, frame in enumerate(expected):
+                h.iap_commands.clear()
+                h.call(self.symbols["custom_tick"])
+                self.assertEqual(h.read(RGB, 45), frame, f"RGB mismatch at loop {loop} tick {tick}")
+                reads = sum(item["code"] == 0x3E for item in h.iap_commands)
+                self.assertEqual(reads, 1 if tick % 4 == 0 else 0)
+        self.assertGreaterEqual(h.min_sp, 0x1000076C)
+        self.assertTrue(primasks)
+        self.assertEqual(set(primasks), {1})
+
+    def test_failed_frame_read_preserves_last_good_output_and_control(self):
+        from custom_animation import encode_candidate
+
+        example = REPO / "examples" / "purple-rotation.json"
+        animation = optimize_animation_document(load_animation_document(example))
+        data = encode_candidate(animation, "delta-palette")
+        self.upload(data)
+        h = self.harness
+        h.call(self.symbols["boot_restore"])
+        h.call(self.symbols["custom_tick"])
+        previous = h.read(RGB, 45)
+        for _ in range(3):
+            h.call(self.symbols["custom_tick"])
+        h.eeprom_status_queues[0x3E].append(1)
+        h.call(self.symbols["custom_tick"])
+        self.assertEqual(h.read(RGB, 45), previous)
+        response, _ = h.dispatch(bytearray([0x0E, 0x26]) + bytes(62))
+        self.assertEqual(response[4], 1)
+        rgb = bytes([0x12, 0x34, 0x56]) * 15
+        h.dispatch(bytearray([7, 0x22, 15, 0]) + rgb + bytes(15))
+        self.assertEqual(h.read(RGB, 45), rgb)
+
+    def test_partial_delta_preserves_unchanged_zones_with_poisoned_stack(self):
+        from custom_animation import encode_candidate
+        from test_custom_animation import make_animation
+
+        first = bytes([0x11, 0x22, 0x33]) * 15
+        second = bytearray(first)
+        second[0:3] = bytes([0x44, 0x55, 0x66])
+        animation = make_animation([first, bytes(second)], [1, 1], loop=True)
+        data = encode_candidate(animation, "delta-palette")
+        self.upload(data)
+        h = self.harness
+        h.call(self.symbols["boot_restore"])
+        h.call(self.symbols["custom_tick"])
+        self.assertEqual(h.read(RGB, 45), first)
+        h.write(h.min_sp, bytes([0xA5]) * (STACK_TOP - h.min_sp))
+        h.call(self.symbols["custom_tick"])
+        self.assertEqual(h.read(RGB, 45), bytes(second))
 
 
 if __name__ == "__main__":
